@@ -1,895 +1,902 @@
-<div class="pay-stub-section">
-    <h4>EARNINGS</h4>
-    <div class="pay-row">
-        <span>Regular Pay:</span>
-        <span>${payroll.formatCurrency(payrollRecord.pay.regular)}</span>
-    </div>
-    <div class="pay-row">
-        <span>Overtime Pay (1.5x):</span>
-        <span>${payroll.formatCurrency(payrollRecord.pay.overtime)}</span>
-    </div>
-    <div class="pay-row">
-        <span>Stat Holiday Pay (1.5x):</span>
-        <span>${payroll.formatCurrency(payrollRecord.pay.holiday)}</span>
-    </div>
-    <div style="margin-left: 20px; border-left: 2px solid #bdc3c7; padding-left: 10px; margin-top: 5px;">
-        <div style="font-weight: bold; margin-bottom: 5px; color: #34495e;">Shift Premiums:</div>
-        <div class="pay-row" style="font-size: 0.9em;">
-            <span>Night Shift (+$4/hr):</span>
-            <span>${payroll.formatCurrency(payrollRecord.pay.shiftPremiums.nightShift)}</span>
-        </div>
-        <div class="pay-row" style="font-size: 0.9em;">
-            <span>Evening Shift (+$2/hr):</span>
-            <span>${payroll.formatCurrency(payrollRecord.pay.shiftPremiums.eveningShift)}</span>
-        </div>
-        <div class="pay-row" style="font-size: 0.9em;">
-            <span>Weekend (+$2/hr):</span>
-            <span>${payroll.formatCurrency(payrollRecord.pay.shiftPremiums<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Simple Payroll Calculator</title>
-<style>
-* {
-box-sizing: border-box;
-margin: 0;
-padding: 0;
-}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Payroll Calculator</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
-body {
-font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-min-height: 100vh;
-padding: 20px;
-}
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
 
-.container {
-max-width: 1200px;
-margin: 0 auto;
-background: white;
-border-radius: 15px;
-box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-overflow: hidden;
-}
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
 
-.header {
-background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-color: white;
-padding: 30px;
-text-align: center;
-}
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
 
-.header h1 {
-font-size: 2.5em;
-margin-bottom: 10px;
-}
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
 
-.header p {
-font-size: 1.1em;
-opacity: 0.9;
-}
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
 
-.main-content {
-display: flex;
-flex-wrap: wrap;
-min-height: 600px;
-}
+        .main-content {
+            display: flex;
+            flex-wrap: wrap;
+            min-height: 600px;
+        }
 
-.form-section {
-flex: 1;
-min-width: 500px;
-padding: 30px;
-background: #f8f9fa;
-}
+        .form-section {
+            flex: 1;
+            min-width: 500px;
+            padding: 30px;
+            background: #f8f9fa;
+        }
 
-.results-section {
-flex: 1;
-min-width: 500px;
-padding: 30px;
-background: white;
-}
+        .results-section {
+            flex: 1;
+            min-width: 500px;
+            padding: 30px;
+            background: white;
+        }
 
-.section-title {
-font-size: 1.5em;
-color: #2c3e50;
-margin-bottom: 20px;
-border-bottom: 3px solid #3498db;
-padding-bottom: 10px;
-}
+        .section-title {
+            font-size: 1.5em;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
 
-.form-group {
-margin-bottom: 20px;
-}
+        .form-group {
+            margin-bottom: 20px;
+        }
 
-.form-row {
-display: flex;
-gap: 15px;
-margin-bottom: 15px;
-}
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
 
-.form-row .form-group {
-flex: 1;
-margin-bottom: 0;
-}
+        .form-row .form-group {
+            flex: 1;
+            margin-bottom: 0;
+        }
 
-label {
-display: block;
-margin-bottom: 5px;
-font-weight: 600;
-color: #34495e;
-}
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #34495e;
+        }
 
-input, select {
-width: 100%;
-padding: 12px;
-border: 2px solid #e0e0e0;
-border-radius: 8px;
-font-size: 16px;
-transition: border-color 0.3s ease;
-}
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
 
-input:focus, select:focus {
-outline: none;
-border-color: #3498db;
-box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
-}
+        input:focus, select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
 
-.btn {
-background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
-color: white;
-padding: 15px 30px;
-border: none;
-border-radius: 8px;
-font-size: 16px;
-font-weight: 600;
-cursor: pointer;
-transition: transform 0.2s ease, box-shadow 0.2s ease;
-width: 100%;
-margin-top: 10px;
-}
+        .btn {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            width: 100%;
+            margin-top: 10px;
+        }
 
-.btn:hover {
-transform: translateY(-2px);
-box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
-}
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        }
 
-.btn-secondary {
-background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
-margin-right: 10px;
-width: auto;
-display: inline-block;
-}
+        .btn-secondary {
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+            margin-right: 10px;
+            width: auto;
+            display: inline-block;
+        }
 
-.pay-stub {
-background: #f8f9fa;
-border: 2px solid #e0e0e0;
-border-radius: 10px;
-padding: 25px;
-margin-top: 20px;
-font-family: 'Courier New', monospace;
-}
+        .pay-stub {
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 25px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+        }
 
-.pay-stub-header {
-text-align: center;
-border-bottom: 2px solid #34495e;
-padding-bottom: 15px;
-margin-bottom: 20px;
-}
+        .pay-stub-header {
+            text-align: center;
+            border-bottom: 2px solid #34495e;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
 
-.pay-stub-title {
-font-size: 1.5em;
-font-weight: bold;
-color: #2c3e50;
-}
+        .pay-stub-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
 
-.pay-stub-section {
-margin-bottom: 20px;
-}
+        .pay-stub-section {
+            margin-bottom: 20px;
+        }
 
-.pay-stub-section h4 {
-color: #34495e;
-margin-bottom: 10px;
-font-size: 1.1em;
-border-bottom: 1px solid #bdc3c7;
-padding-bottom: 5px;
-}
+        .pay-stub-section h4 {
+            color: #34495e;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            border-bottom: 1px solid #bdc3c7;
+            padding-bottom: 5px;
+        }
 
-.pay-row {
-display: flex;
-justify-content: space-between;
-margin-bottom: 5px;
-padding: 2px 0;
-}
+        .pay-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
 
-.pay-row.total {
-font-weight: bold;
-border-top: 1px solid #34495e;
-padding-top: 8px;
-margin-top: 8px;
-}
+        .pay-row.total {
+            font-weight: bold;
+            border-top: 1px solid #34495e;
+            padding-top: 8px;
+            margin-top: 8px;
+        }
 
-.pay-row.net-pay {
-font-size: 1.2em;
-background: #e8f5e8;
-padding: 10px;
-border-radius: 5px;
-border: 2px solid #27ae60;
-}
+        .pay-row.net-pay {
+            font-size: 1.2em;
+            background: #e8f5e8;
+            padding: 10px;
+            border-radius: 5px;
+            border: 2px solid #27ae60;
+        }
 
-.employee-list {
-background: #f8f9fa;
-border-radius: 8px;
-padding: 15px;
-margin-bottom: 20px;
-}
+        .premium-breakdown {
+            margin-left: 20px;
+            border-left: 2px solid #bdc3c7;
+            padding-left: 10px;
+            margin-top: 10px;
+            background: #f9f9f9;
+            border-radius: 5px;
+            padding: 10px;
+        }
 
-.employee-item {
-background: white;
-padding: 10px;
-margin-bottom: 8px;
-border-radius: 5px;
-border-left: 4px solid #3498db;
-cursor: pointer;
-transition: all 0.2s ease;
-}
+        .premium-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #34495e;
+            font-size: 0.95em;
+        }
 
-.employee-item:hover {
-background: #ecf0f1;
-transform: translateX(5px);
-}
+        .premium-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+            font-size: 0.9em;
+            color: #555;
+        }
 
-.employee-item.selected {
-border-left-color: #27ae60;
-background: #e8f5e8;
-}
+        .employee-list {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
 
-.alert {
-padding: 15px;
-margin-bottom: 20px;
-border-radius: 8px;
-background: #f39c12;
-color: white;
-font-weight: 600;
-}
+        .employee-item {
+            background: white;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
 
-.alert.success {
-background: #27ae60;
-}
+        .employee-item:hover {
+            background: #ecf0f1;
+            transform: translateX(5px);
+        }
 
-.alert.error {
-background: #e74c3c;
-}
+        .employee-item.selected {
+            border-left-color: #27ae60;
+            background: #e8f5e8;
+        }
 
-@media (max-width: 768px) {
-.main-content {
-flex-direction: column;
-}
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            background: #f39c12;
+            color: white;
+            font-weight: 600;
+        }
 
-.form-section, .results-section {
-min-width: auto;
-}
+        .alert.success {
+            background: #27ae60;
+        }
 
-.form-row {
-flex-direction: column;
-}
-}
-</style>
+        .alert.error {
+            background: #e74c3c;
+        }
+
+        .hours-subtitle {
+            margin-top: 20px;
+            margin-bottom: 10px;
+            color: #34495e;
+            font-size: 1.1em;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .form-section, .results-section {
+                min-width: auto;
+            }
+            
+            .form-row {
+                flex-direction: column;
+            }
+        }
+    </style>
 </head>
 <body>
-<div class="container">
-<div class="header">
-<h1>💼 Simple Payroll Calculator</h1>
-<p>Calculate wages, overtime, holiday pay, and deductions with ease</p>
-</div>
-
-<div class="main-content">
-<div class="form-section">
-<h2 class="section-title">Employee & Payroll Setup</h2>
-
-<!-- Employee Management -->
-<div class="form-group">
-<h3>Add New Employee</h3>
-<div class="form-row">
-    <div class="form-group">
-        <label for="employeeName">Name</label>
-        <input type="text" id="employeeName" placeholder="John Smith">
-    </div>
-    <div class="form-group">
-        <label for="hourlyRate">Hourly Rate ($)</label>
-        <input type="number" id="hourlyRate" step="0.01" placeholder="25.00">
-    </div>
-</div>
-<div class="form-row">
-    <div class="form-group">
-        <label for="department">Department</label>
-        <input type="text" id="department" placeholder="Engineering">
-    </div>
-    <div class="form-group">
-        <button class="btn btn-secondary" onclick="addEmployee()">Add Employee</button>
-    </div>
-</div>
-</div>
-
-<!-- Employee List -->
-<div class="employee-list">
-<h4>Select Employee:</h4>
-<div id="employeeList">
-    <div class="alert">No employees added yet. Add an employee above to get started.</div>
-</div>
-</div>
-
-<!-- Payroll Calculation -->
-<div class="form-group">
-<h3>Hours Worked</h3>
-<div class="form-row">
-    <div class="form-group">
-        <label for="totalHours">Total Hours Worked</label>
-        <input type="number" id="totalHours" step="0.5" placeholder="80">
-    </div>
-    <div class="form-group">
-        <label for="overtimeHours">Overtime Hours (>40)</label>
-        <input type="number" id="overtimeHours" step="0.5" placeholder="40">
-    </div>
-</div>
-<div class="form-row">
-    <div class="form-group">
-        <label for="holidayHours">Stat Holiday Hours</label>
-        <input type="number" id="holidayHours" step="0.5" placeholder="7.5">
-    </div>
-</div>
-
-<h4 style="margin-top: 20px; color: #34495e;">Premium Hours (subset of total hours)</h4>
-<div class="form-row">
-    <div class="form-group">
-        <label for="nightShiftHours">Night Shift Hours (+$4/hr)</label>
-        <input type="number" id="nightShiftHours" step="0.5" placeholder="16">
-    </div>
-    <div class="form-group">
-        <label for="eveningShiftHours">Evening Shift Hours (+$2/hr)</label>
-        <input type="number" id="eveningShiftHours" step="0.5" placeholder="7.5">
-    </div>
-</div>
-<div class="form-row">
-    <div class="form-group">
-        <label for="weekendHours">Weekend Hours (+$2/hr)</label>
-        <input type="number" id="weekendHours" step="0.5" placeholder="30">
-    </div>
-    <div class="form-group">
-        <label for="onCallHours">On-Call Hours (+$3/hr)</label>
-        <input type="number" id="onCallHours" step="0.5" placeholder="0">
-    </div>
-</div>
-</div>
-
-<div class="form-group">
-<h3>Deductions & Benefits</h3>
-<div class="form-row">
-    <div class="form-group">
-        <label for="cppRate">CPP Rate (%)</label>
-        <input type="number" id="cppRate" step="0.01" placeholder="5.95" value="5.95">
-    </div>
-    <div class="form-group">
-        <label for="eiRate">EI Rate (%)</label>
-        <input type="number" id="eiRate" step="0.01" placeholder="2.32" value="2.32">
-    </div>
-</div>
-<div class="form-row">
-    <div class="form-group">
-        <label for="unionDues">Union Dues ($)</label>
-        <input type="number" id="unionDues" step="0.01" placeholder="75" value="75">
-    </div>
-    <div class="form-group">
-        <label for="benefits">Benefits ($)</label>
-        <input type="number" id="benefits" step="0.01" placeholder="120" value="120">
-    </div>
-</div>
-<div class="form-row">
-    <div class="form-group">
-        <label for="pensionRate">Pension (%)</label>
-        <input type="number" id="pensionRate" step="0.01" placeholder="9.2" value="9.2">
-    </div>
-    <div class="form-group">
-        <label for="parkingFees">Parking/Other ($)</label>
-        <input type="number" id="parkingFees" step="0.01" placeholder="50" value="50">
-    </div>
-</div>
-</div>
-
-<button class="btn" onclick="calculatePayroll()">Calculate Payroll</button>
-</div>
-
-<div class="results-section">
-<h2 class="section-title">Payroll Results</h2>
-<div id="results">
-<div class="alert">
-    Select an employee and enter hours to calculate payroll.
-</div>
-</div>
-</div>
-</div>
-</div>
-
-<script>
-class PayrollCalculator {
-constructor() {
-this.employees = [];
-this.payPeriods = [];
-this.nextId = 1;
-}
-
-addEmployee(name, hourlyRate, department = 'General') {
-const employee = {
-id: this.nextId++,
-name,
-hourlyRate,
-department,
-dateHired: new Date()
-};
-this.employees.push(employee);
-return employee;
-}
-
-getEmployee(id) {
-return this.employees.find(emp => emp.id === id);
-}
-
-calculateRegularPay(hoursWorked, hourlyRate, maxRegularHours = 40) {
-const regularHours = Math.min(hoursWorked, maxRegularHours);
-return regularHours * hourlyRate;
-}
-
-calculateOvertimePay(hoursWorked, hourlyRate, overtimeThreshold = 40, overtimeMultiplier = 1.5) {
-if (hoursWorked <= overtimeThreshold) return 0;
-const overtimeHours = hoursWorked - overtimeThreshold;
-return overtimeHours * hourlyRate * overtimeMultiplier;
-}
-
-calculateHolidayPay(holidayHours, hourlyRate, holidayMultiplier = 1.5) {
-return holidayHours * hourlyRate * holidayMultiplier;
-}
-
-// Calculate premium pay for different shift types
-calculateShiftPremiums(shiftPremiums, hourlyRate) {
-const {
-nightShiftHours = 0,
-eveningShiftHours = 0,
-weekendHours = 0,
-onCallHours = 0
-} = shiftPremiums;
-
-return {
-nightShift: nightShiftHours * 4.00, // $4/hr premium
-eveningShift: eveningShiftHours * 2.00, // $2/hr premium
-weekend: weekendHours * 2.00, // $2/hr premium
-onCall: onCallHours * 3.00, // $3/hr premium
-total: (nightShiftHours * 4.00) + (eveningShiftHours * 2.00) + 
-       (weekendHours * 2.00) + (onCallHours * 3.00)
-};
-}
-
-// Calculate marginal tax rates for BC (2024/2025)
-calculateIncomeTax(annualIncome) {
-// Federal tax brackets (2024)
-const federalBrackets = [
-{ min: 0, max: 55867, rate: 0.15 },
-{ min: 55867, max: 111733, rate: 0.205 },
-{ min: 111733, max: 173205, rate: 0.26 },
-{ min: 173205, max: 246752, rate: 0.29 },
-{ min: 246752, max: Infinity, rate: 0.33 }
-];
-
-// BC provincial tax brackets (2024)
-const bcBrackets = [
-{ min: 0, max: 47937, rate: 0.0506 },
-{ min: 47937, max: 95875, rate: 0.077 },
-{ min: 95875, max: 110076, rate: 0.105 },
-{ min: 110076, max: 133664, rate: 0.1229 },
-{ min: 133664, max: 181232, rate: 0.147 },
-{ min: 181232, max: Infinity, rate: 0.168 }
-];
-
-let federalTax = 0;
-let bcTax = 0;
-
-// Calculate federal tax
-for (let bracket of federalBrackets) {
-if (annualIncome > bracket.min) {
-    const taxableInBracket = Math.min(annualIncome, bracket.max) - bracket.min;
-    federalTax += taxableInBracket * bracket.rate;
-}
-}
-
-// Calculate BC provincial tax
-for (let bracket of bcBrackets) {
-if (annualIncome > bracket.min) {
-    const taxableInBracket = Math.min(annualIncome, bracket.max) - bracket.min;
-    bcTax += taxableInBracket * bracket.rate;
-}
-}
-
-// Federal and BC basic personal amounts
-const federalBasicPersonal = 15705; // 2024
-const bcBasicPersonal = 11980; // 2024
-
-federalTax = Math.max(0, federalTax - (federalBasicPersonal * 0.15));
-bcTax = Math.max(0, bcTax - (bcBasicPersonal * 0.0506));
-
-return {
-federal: federalTax,
-provincial: bcTax,
-total: federalTax + bcTax
-};
-}
-
-calculateDeductions(grossPay, annualGross, deductionRates = {}) {
-const {
-cppRate = 0.0595,
-eiRate = 0.0232,
-unionDues = 0,
-benefits = 0,
-pensionRate = 0.092,
-parkingFees = 0
-} = deductionRates;
-
-// Calculate income tax based on estimated annual income
-const taxCalculation = this.calculateIncomeTax(annualGross);
-const biweeklyFederalTax = taxCalculation.federal / 26;
-const biweeklyProvincialTax = taxCalculation.provincial / 26;
-
-// CPP maximum annual contribution (2024): $3,754.45 on max pensionable earnings of $68,500
-const cppMax = 3754.45;
-const cppExemption = 3500; // Annual exemption
-const cppPensionableEarnings = Math.max(0, Math.min(annualGross - cppExemption, 68500 - cppExemption));
-const biweeklyCpp = Math.min((cppPensionableEarnings * cppRate) / 26, cppMax / 26);
-
-// EI maximum annual contribution (2024): $1,002.45 on max insurable earnings of $63,300
-const eiMax = 1002.45;
-const eiInsurableEarnings = Math.min(annualGross, 63300);
-const biweeklyEi = Math.min((eiInsurableEarnings * eiRate) / 26, eiMax / 26);
-
-const deductions = {
-federalTax: biweeklyFederalTax,
-provincialTax: biweeklyProvincialTax,
-cpp: biweeklyCpp,
-ei: biweeklyEi,
-unionDues: unionDues,
-benefits: benefits,
-pension: grossPay * pensionRate,
-parkingFees: parkingFees
-};
-
-deductions.total = Object.values(deductions).reduce((sum, deduction) => sum + deduction, 0);
-return deductions;
-}
-
-calculatePayroll(employeeId, payPeriodData) {
-const employee = this.getEmployee(employeeId);
-if (!employee) {
-throw new Error(`Employee with ID ${employeeId} not found`);
-}
-
-const {
-totalHours = 0,
-overtimeHours = 0,
-holidayHours = 0,
-shiftPremiums = {},
-deductionRates = {},
-payPeriodStart,
-payPeriodEnd
-} = payPeriodData;
-
-// Calculate regular hours (total - overtime)
-const regularHours = Math.max(0, totalHours - overtimeHours);
-
-// Calculate different types of pay
-const regularPay = this.calculateRegularPay(regularHours, employee.hourlyRate);
-const overtimePay = overtimeHours * employee.hourlyRate * 1.5; // 1.5x for overtime
-const holidayPay = this.calculateHolidayPay(holidayHours, employee.hourlyRate);
-const shiftPremiumPay = this.calculateShiftPremiums(shiftPremiums, employee.hourlyRate);
-
-// Calculate gross pay
-const grossPay = regularPay + overtimePay + holidayPay + shiftPremiumPay.total;
-
-// Estimate annual gross for tax calculations (biweekly * 26)
-const annualGrossEstimate = grossPay * 26;
-
-// Calculate deductions
-const deductions = this.calculateDeductions(grossPay, annualGrossEstimate, deductionRates);
-
-// Calculate net pay
-const netPay = grossPay - deductions.total;
-
-// Create payroll record
-const payrollRecord = {
-employeeId: employee.id,
-employeeName: employee.name,
-payPeriodStart: payPeriodStart || new Date(),
-payPeriodEnd: payPeriodEnd || new Date(),
-hours: {
-    total: totalHours,
-    regular: regularHours,
-    overtime: overtimeHours,
-    holiday: holidayHours,
-    shiftPremiums: shiftPremiums
-},
-pay: {
-    hourlyRate: employee.hourlyRate,
-    regular: regularPay,
-    overtime: overtimePay,
-    holiday: holidayPay,
-    shiftPremiums: shiftPremiumPay,
-    gross: grossPay
-},
-deductions,
-netPay,
-calculatedAt: new Date()
-};
-
-this.payPeriods.push(payrollRecord);
-return payrollRecord;
-}
-
-formatCurrency(amount) {
-return new Intl.NumberFormat('en-US', {
-style: 'currency',
-currency: 'USD'
-}).format(amount);
-}
-}
-
-// Initialize payroll calculator
-const payroll = new PayrollCalculator();
-let selectedEmployeeId = null;
-
-// Add some sample employees
-payroll.addEmployee('John Smith', 25.00, 'Engineering');
-payroll.addEmployee('Jane Doe', 22.50, 'Sales');
-payroll.addEmployee('Mike Johnson', 30.00, 'Management');
-
-function addEmployee() {
-const name = document.getElementById('employeeName').value;
-const hourlyRate = parseFloat(document.getElementById('hourlyRate').value);
-const department = document.getElementById('department').value || 'General';
-
-if (!name || !hourlyRate || hourlyRate <= 0) {
-showAlert('Please enter valid employee name and hourly rate.', 'error');
-return;
-}
-
-const employee = payroll.addEmployee(name, hourlyRate, department);
-showAlert(`Employee ${name} added successfully!`, 'success');
-
-// Clear form
-document.getElementById('employeeName').value = '';
-document.getElementById('hourlyRate').value = '';
-document.getElementById('department').value = '';
-
-updateEmployeeList();
-}
-
-function updateEmployeeList() {
-const employeeList = document.getElementById('employeeList');
-
-if (payroll.employees.length === 0) {
-employeeList.innerHTML = '<div class="alert">No employees added yet. Add an employee above to get started.</div>';
-return;
-}
-
-employeeList.innerHTML = payroll.employees.map(emp => `
-<div class="employee-item ${selectedEmployeeId === emp.id ? 'selected' : ''}" 
- onclick="selectEmployee(${emp.id})">
-<strong>${emp.name}</strong> - ${payroll.formatCurrency(emp.hourlyRate)}/hr - ${emp.department}
-</div>
-`).join('');
-}
-
-function selectEmployee(employeeId) {
-selectedEmployeeId = employeeId;
-updateEmployeeList();
-}
-
-function calculatePayroll() {
-if (!selectedEmployeeId) {
-showAlert('Please select an employee first.', 'error');
-return;
-}
-
-const totalHours = parseFloat(document.getElementById('totalHours').value) || 0;
-const overtimeHours = parseFloat(document.getElementById('overtimeHours').value) || 0;
-const holidayHours = parseFloat(document.getElementById('holidayHours').value) || 0;
-
-const shiftPremiums = {
-nightShiftHours: parseFloat(document.getElementById('nightShiftHours').value) || 0,
-eveningShiftHours: parseFloat(document.getElementById('eveningShiftHours').value) || 0,
-weekendHours: parseFloat(document.getElementById('weekendHours').value) || 0,
-onCallHours: parseFloat(document.getElementById('onCallHours').value) || 0
-};
-
-const deductionRates = {
-cppRate: (parseFloat(document.getElementById('cppRate').value) || 0) / 100,
-eiRate: (parseFloat(document.getElementById('eiRate').value) || 0) / 100,
-unionDues: parseFloat(document.getElementById('unionDues').value) || 0,
-benefits: parseFloat(document.getElementById('benefits').value) || 0,
-pensionRate: (parseFloat(document.getElementById('pensionRate').value) || 0) / 100,
-parkingFees: parseFloat(document.getElementById('parkingFees').value) || 0
-};
-
-try {
-const payrollRecord = payroll.calculatePayroll(selectedEmployeeId, {
-totalHours,
-overtimeHours,
-holidayHours,
-shiftPremiums,
-deductionRates,
-payPeriodStart: new Date(),
-payPeriodEnd: new Date()
-});
-
-displayPayStub(payrollRecord);
-showAlert('Payroll calculated successfully!', 'success');
-} catch (error) {
-showAlert(`Error: ${error.message}`, 'error');
-}
-}
-
-function displayPayStub(payrollRecord) {
-const resultsDiv = document.getElementById('results');
-
-resultsDiv.innerHTML = `
-<div class="pay-stub">
-<div class="pay-stub-header">
-    <div class="pay-stub-title">PAYROLL STUB</div>
-    <div style="margin-top: 10px;">
-        <strong>${payrollRecord.employeeName}</strong> (ID: ${payrollRecord.employeeId})<br>
-        Pay Period: ${payrollRecord.payPeriodStart.toLocaleDateString()} - ${payrollRecord.payPeriodEnd.toLocaleDateString()}<br>
-        Hourly Rate: ${payroll.formatCurrency(payrollRecord.pay.hourlyRate)}
-    </div>
-</div>
-
-<div class="pay-stub-section">
-    <h4>HOURS WORKED</h4>
-    <div class="pay-row">
-        <span>Total Hours:</span>
-        <span>${payrollRecord.hours.total}</span>
-    </div>
-    <div class="pay-row">
-        <span>Regular Hours:</span>
-        <span>${payrollRecord.hours.regular}</span>
-    </div>
-    <div class="pay-row">
-        <span>Overtime Hours:</span>
-        <span>${payrollRecord.hours.overtime}</span>
-    </div>
-    <div class="pay-row">
-        <span>Stat Holiday Hours:</span>
-        <span>${payrollRecord.hours.holiday}</span>
-    </div>
-    <div style="margin-left: 20px; border-left: 2px solid #bdc3c7; padding-left: 10px; margin-top: 10px;">
-        <div style="font-weight: bold; margin-bottom: 5px; color: #34495e;">Premium Hours Breakdown:</div>
-        <div class="pay-row" style="font-size: 0.9em;">
-            <span>Night Shift:</span>
-            <span>${payrollRecord.hours.shiftPremiums.nightShiftHours || 0} hrs</span>
+    <div class="container">
+        <div class="header">
+            <h1>💼 Simple Payroll Calculator</h1>
+            <p>Calculate wages, overtime, holiday pay, and shift premiums for BC healthcare workers</p>
         </div>
-        <div class="pay-row" style="font-size: 0.9em;">
-            <span>Evening Shift:</span>
-            <span>${payrollRecord.hours.shiftPremiums.eveningShiftHours || 0} hrs</span>
-        </div>
-        <div class="pay-row" style="font-size: 0.9em;">
-            <span>Weekend:</span>
-            <span>${payrollRecord.hours.shiftPremiums.weekendHours || 0} hrs</span>
-        </div>
-        <div class="pay-row" style="font-size: 0.9em;">
-            <span>On-Call:</span>
-            <span>${payrollRecord.hours.shiftPremiums.onCallHours || 0} hrs</span>
+
+        <div class="main-content">
+            <div class="form-section">
+                <h2 class="section-title">Employee & Payroll Setup</h2>
+                
+                <!-- Employee Management -->
+                <div class="form-group">
+                    <h3>Add New Employee</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="employeeName">Name</label>
+                            <input type="text" id="employeeName" placeholder="John Smith">
+                        </div>
+                        <div class="form-group">
+                            <label for="hourlyRate">Hourly Rate ($)</label>
+                            <input type="number" id="hourlyRate" step="0.01" placeholder="25.00">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="department">Department</label>
+                            <input type="text" id="department" placeholder="Engineering">
+                        </div>
+                        <div class="form-group">
+                            <button class="btn btn-secondary" onclick="addEmployee()">Add Employee</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Employee List -->
+                <div class="employee-list">
+                    <h4>Select Employee:</h4>
+                    <div id="employeeList">
+                        <div class="alert">No employees added yet. Add an employee above to get started.</div>
+                    </div>
+                </div>
+
+                <!-- Payroll Calculation -->
+                <div class="form-group">
+                    <h3>Hours Worked</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="totalHours">Total Hours Worked</label>
+                            <input type="number" id="totalHours" step="0.5" placeholder="80">
+                        </div>
+                        <div class="form-group">
+                            <label for="overtimeHours">Overtime Hours (>40)</label>
+                            <input type="number" id="overtimeHours" step="0.5" placeholder="40">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="holidayHours">Stat Holiday Hours</label>
+                            <input type="number" id="holidayHours" step="0.5" placeholder="7.5">
+                        </div>
+                    </div>
+                    
+                    <h4 class="hours-subtitle">Premium Hours (subset of total hours)</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="nightShiftHours">Night Shift Hours (+$4/hr)</label>
+                            <input type="number" id="nightShiftHours" step="0.5" placeholder="16">
+                        </div>
+                        <div class="form-group">
+                            <label for="eveningShiftHours">Evening Shift Hours (+$2/hr)</label>
+                            <input type="number" id="eveningShiftHours" step="0.5" placeholder="7.5">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="weekendHours">Weekend Hours (+$2/hr)</label>
+                            <input type="number" id="weekendHours" step="0.5" placeholder="30">
+                        </div>
+                        <div class="form-group">
+                            <label for="onCallHours">On-Call Hours (+$3/hr)</label>
+                            <input type="number" id="onCallHours" step="0.5" placeholder="0">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <h3>Deductions & Benefits</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="cppRate">CPP Rate (%)</label>
+                            <input type="number" id="cppRate" step="0.01" placeholder="5.95" value="5.95">
+                        </div>
+                        <div class="form-group">
+                            <label for="eiRate">EI Rate (%)</label>
+                            <input type="number" id="eiRate" step="0.01" placeholder="2.32" value="2.32">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="unionDues">Union Dues ($)</label>
+                            <input type="number" id="unionDues" step="0.01" placeholder="75" value="75">
+                        </div>
+                        <div class="form-group">
+                            <label for="benefits">Benefits ($)</label>
+                            <input type="number" id="benefits" step="0.01" placeholder="120" value="120">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="pensionRate">Pension (%)</label>
+                            <input type="number" id="pensionRate" step="0.01" placeholder="9.2" value="9.2">
+                        </div>
+                        <div class="form-group">
+                            <label for="parkingFees">Parking/Other ($)</label>
+                            <input type="number" id="parkingFees" step="0.01" placeholder="50" value="50">
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn" onclick="calculatePayroll()">Calculate Payroll</button>
+            </div>
+
+            <div class="results-section">
+                <h2 class="section-title">Payroll Results</h2>
+                <div id="results">
+                    <div class="alert">
+                        Select an employee and enter hours to calculate payroll.
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-</div>
 
-<div class="pay-stub-section">
-    <h4>EARNINGS</h4>
-    <div class="pay-row">
-        <span>Regular Pay:</span>
-        <span>${payroll.formatCurrency(payrollRecord.pay.regular)}</span>
-    </div>
-    <div class="pay-row">
-        <span>Overtime Pay (1.5x):</span>
-        <span>${payroll.formatCurrency(payrollRecord.pay.overtime)}</span>
-    </div>
-    <div class="pay-row">
-        <span>Stat Holiday Pay (1.5x):</span>
-        <span>${payroll.formatCurrency(payrollRecord.pay.holiday)}</span>
-    </div>
-    <div style="margin-left: 20px; border-left: 2px solid #bdc3c7; padding-left: 10px; margin-top: 5px;">
-        <div style="font-weight: bold; margin-bottom: 5px; color: #34495e;">Shift Premiums:</div>
-        <div class="pay-row" style="font-size: 0.9em;">
-            <span>Night Shift (+$4/hr):</span>
-            <span>${payroll.formatCurrency(payrollRecord.pay.shiftPremiums.nightShift)}</span>
-        </div>
-        <div class="pay-row" style="font-size: 0.9em;">
-            <span>Evening Shift (+$2/hr):</span>
-            <span>${payroll.formatCurrency(payrollRecord.pay.shiftPremiums.eveningShift)}</span>
-        </div>
-        <div class="pay-row" style="font-size: 0.9em;">
-            <span>Weekend (+$2/hr):</span>
-            <span>${payroll.formatCurrency(payrollRecord.pay.shiftPremiums.weekend)}</span>
-        </div>
-        <div class="pay-row" style="font-size: 0.9em;">
-            <span>On-Call (+$3/hr):</span>
-            <span>${payroll.formatCurrency(payrollRecord.pay.shiftPremiums.onCall)}</span>
-        </div>
-    </div>
-    <div class="pay-row total">
-        <span>GROSS PAY:</span>
-        <span>${payroll.formatCurrency(payrollRecord.pay.gross)}</span>
-    </div>
-</div>
+    <script>
+        class PayrollCalculator {
+            constructor() {
+                this.employees = [];
+                this.payPeriods = [];
+                this.nextId = 1;
+            }
 
-<div class="pay-stub-section">
-    <h4>DEDUCTIONS</h4>
-    <div class="pay-row">
-        <span>Federal Tax:</span>
-        <span>${payroll.formatCurrency(payrollRecord.deductions.federalTax)}</span>
-    </div>
-    <div class="pay-row">
-        <span>State Tax:</span>
-        <span>${payroll.formatCurrency(payrollRecord.deductions.stateTax)}</span>
-    </div>
-    <div class="pay-row">
-        <span>Social Security:</span>
-        <span>${payroll.formatCurrency(payrollRecord.deductions.socialSecurity)}</span>
-    </div>
-    <div class="pay-row">
-        <span>Medicare:</span>
-        <span>${payroll.formatCurrency(payrollRecord.deductions.medicare)}</span>
-    </div>
-    <div class="pay-row">
-        <span>Insurance:</span>
-        <span>${payroll.formatCurrency(payrollRecord.deductions.insurance)}</span>
-    </div>
-    <div class="pay-row">
-        <span>Retirement:</span>
-        <span>${payroll.formatCurrency(payrollRecord.deductions.retirement)}</span>
-    </div>
-    <div class="pay-row total">
-        <span>TOTAL DEDUCTIONS:</span>
-        <span>${payroll.formatCurrency(payrollRecord.deductions.total)}</span>
-    </div>
-</div>
+            addEmployee(name, hourlyRate, department = 'General') {
+                const employee = {
+                    id: this.nextId++,
+                    name,
+                    hourlyRate,
+                    department,
+                    dateHired: new Date()
+                };
+                this.employees.push(employee);
+                return employee;
+            }
 
-<div class="pay-row net-pay">
-    <span><strong>NET PAY:</strong></span>
-    <span><strong>${payroll.formatCurrency(payrollRecord.netPay)}</strong></span>
-</div>
-</div>
-`;
-}
+            getEmployee(id) {
+                return this.employees.find(emp => emp.id === id);
+            }
 
-function showAlert(message, type = 'info') {
-// Remove existing alerts
-const existingAlerts = document.querySelectorAll('.temp-alert');
-existingAlerts.forEach(alert => alert.remove());
+            calculateRegularPay(hoursWorked, hourlyRate, maxRegularHours = 40) {
+                const regularHours = Math.min(hoursWorked, maxRegularHours);
+                return regularHours * hourlyRate;
+            }
 
-// Create new alert
-const alertDiv = document.createElement('div');
-alertDiv.className = `alert ${type} temp-alert`;
-alertDiv.textContent = message;
-alertDiv.style.position = 'fixed';
-alertDiv.style.top = '20px';
-alertDiv.style.right = '20px';
-alertDiv.style.zIndex = '1000';
-alertDiv.style.maxWidth = '300px';
+            calculateHolidayPay(holidayHours, hourlyRate, holidayMultiplier = 1.5) {
+                return holidayHours * hourlyRate * holidayMultiplier;
+            }
 
-document.body.appendChild(alertDiv);
+            // Calculate premium pay for different shift types
+            calculateShiftPremiums(shiftPremiums, hourlyRate) {
+                const {
+                    nightShiftHours = 0,
+                    eveningShiftHours = 0,
+                    weekendHours = 0,
+                    onCallHours = 0
+                } = shiftPremiums;
 
-// Remove alert after 3 seconds
-setTimeout(() => {
-alertDiv.remove();
-}, 3000);
-}
+                return {
+                    nightShift: nightShiftHours * 4.00, // $4/hr premium
+                    eveningShift: eveningShiftHours * 2.00, // $2/hr premium
+                    weekend: weekendHours * 2.00, // $2/hr premium
+                    onCall: onCallHours * 3.00, // $3/hr premium
+                    total: (nightShiftHours * 4.00) + (eveningShiftHours * 2.00) + 
+                           (weekendHours * 2.00) + (onCallHours * 3.00)
+                };
+            }
 
-// Initialize the employee list on page load
-updateEmployeeList();
-</script>
+            // Calculate marginal tax rates for BC (2024/2025)
+            calculateIncomeTax(annualIncome) {
+                // Federal tax brackets (2024)
+                const federalBrackets = [
+                    { min: 0, max: 55867, rate: 0.15 },
+                    { min: 55867, max: 111733, rate: 0.205 },
+                    { min: 111733, max: 173205, rate: 0.26 },
+                    { min: 173205, max: 246752, rate: 0.29 },
+                    { min: 246752, max: Infinity, rate: 0.33 }
+                ];
+
+                // BC provincial tax brackets (2024)
+                const bcBrackets = [
+                    { min: 0, max: 47937, rate: 0.0506 },
+                    { min: 47937, max: 95875, rate: 0.077 },
+                    { min: 95875, max: 110076, rate: 0.105 },
+                    { min: 110076, max: 133664, rate: 0.1229 },
+                    { min: 133664, max: 181232, rate: 0.147 },
+                    { min: 181232, max: Infinity, rate: 0.168 }
+                ];
+
+                let federalTax = 0;
+                let bcTax = 0;
+
+                // Calculate federal tax
+                for (let bracket of federalBrackets) {
+                    if (annualIncome > bracket.min) {
+                        const taxableInBracket = Math.min(annualIncome, bracket.max) - bracket.min;
+                        federalTax += taxableInBracket * bracket.rate;
+                    }
+                }
+
+                // Calculate BC provincial tax
+                for (let bracket of bcBrackets) {
+                    if (annualIncome > bracket.min) {
+                        const taxableInBracket = Math.min(annualIncome, bracket.max) - bracket.min;
+                        bcTax += taxableInBracket * bracket.rate;
+                    }
+                }
+
+                // Federal and BC basic personal amounts
+                const federalBasicPersonal = 15705; // 2024
+                const bcBasicPersonal = 11980; // 2024
+
+                federalTax = Math.max(0, federalTax - (federalBasicPersonal * 0.15));
+                bcTax = Math.max(0, bcTax - (bcBasicPersonal * 0.0506));
+
+                return {
+                    federal: federalTax,
+                    provincial: bcTax,
+                    total: federalTax + bcTax
+                };
+            }
+
+            calculateDeductions(grossPay, annualGross, deductionRates = {}) {
+                const {
+                    cppRate = 0.0595,
+                    eiRate = 0.0232,
+                    unionDues = 0,
+                    benefits = 0,
+                    pensionRate = 0.092,
+                    parkingFees = 0
+                } = deductionRates;
+
+                // Calculate income tax based on estimated annual income
+                const taxCalculation = this.calculateIncomeTax(annualGross);
+                const biweeklyFederalTax = taxCalculation.federal / 26;
+                const biweeklyProvincialTax = taxCalculation.provincial / 26;
+
+                // CPP maximum annual contribution (2024): $3,754.45 on max pensionable earnings of $68,500
+                const cppMax = 3754.45;
+                const cppExemption = 3500; // Annual exemption
+                const cppPensionableEarnings = Math.max(0, Math.min(annualGross - cppExemption, 68500 - cppExemption));
+                const biweeklyCpp = Math.min((cppPensionableEarnings * cppRate) / 26, cppMax / 26);
+
+                // EI maximum annual contribution (2024): $1,002.45 on max insurable earnings of $63,300
+                const eiMax = 1002.45;
+                const eiInsurableEarnings = Math.min(annualGross, 63300);
+                const biweeklyEi = Math.min((eiInsurableEarnings * eiRate) / 26, eiMax / 26);
+
+                const deductions = {
+                    federalTax: biweeklyFederalTax,
+                    provincialTax: biweeklyProvincialTax,
+                    cpp: biweeklyCpp,
+                    ei: biweeklyEi,
+                    unionDues: unionDues,
+                    benefits: benefits,
+                    pension: grossPay * pensionRate,
+                    parkingFees: parkingFees
+                };
+
+                deductions.total = Object.values(deductions).reduce((sum, deduction) => sum + deduction, 0);
+                return deductions;
+            }
+
+            calculatePayroll(employeeId, payPeriodData) {
+                const employee = this.getEmployee(employeeId);
+                if (!employee) {
+                    throw new Error(`Employee with ID ${employeeId} not found`);
+                }
+
+                const {
+                    totalHours = 0,
+                    overtimeHours = 0,
+                    holidayHours = 0,
+                    shiftPremiums = {},
+                    deductionRates = {},
+                    payPeriodStart,
+                    payPeriodEnd
+                } = payPeriodData;
+
+                // Calculate regular hours (total - overtime)
+                const regularHours = Math.max(0, totalHours - overtimeHours);
+
+                // Calculate different types of pay
+                const regularPay = this.calculateRegularPay(regularHours, employee.hourlyRate);
+                const overtimePay = overtimeHours * employee.hourlyRate * 1.5; // 1.5x for overtime
+                const holidayPay = this.calculateHolidayPay(holidayHours, employee.hourlyRate);
+                const shiftPremiumPay = this.calculateShiftPremiums(shiftPremiums, employee.hourlyRate);
+
+                // Calculate gross pay
+                const grossPay = regularPay + overtimePay + holidayPay + shiftPremiumPay.total;
+
+                // Estimate annual gross for tax calculations (biweekly * 26)
+                const annualGrossEstimate = grossPay * 26;
+
+                // Calculate deductions
+                const deductions = this.calculateDeductions(grossPay, annualGrossEstimate, deductionRates);
+
+                // Calculate net pay
+                const netPay = grossPay - deductions.total;
+
+                // Create payroll record
+                const payrollRecord = {
+                    employeeId: employee.id,
+                    employeeName: employee.name,
+                    payPeriodStart: payPeriodStart || new Date(),
+                    payPeriodEnd: payPeriodEnd || new Date(),
+                    hours: {
+                        total: totalHours,
+                        regular: regularHours,
+                        overtime: overtimeHours,
+                        holiday: holidayHours,
+                        shiftPremiums: shiftPremiums
+                    },
+                    pay: {
+                        hourlyRate: employee.hourlyRate,
+                        regular: regularPay,
+                        overtime: overtimePay,
+                        holiday: holidayPay,
+                        shiftPremiums: shiftPremiumPay,
+                        gross: grossPay
+                    },
+                    deductions,
+                    netPay,
+                    calculatedAt: new Date()
+                };
+
+                this.payPeriods.push(payrollRecord);
+                return payrollRecord;
+            }
+
+            formatCurrency(amount) {
+                return new Intl.NumberFormat('en-CA', {
+                    style: 'currency',
+                    currency: 'CAD'
+                }).format(amount);
+            }
+        }
+
+        // Initialize payroll calculator
+        const payroll = new PayrollCalculator();
+        let selectedEmployeeId = null;
+
+        // Add some sample employees
+        payroll.addEmployee('Wayne Zacharias', 50.00, 'RN');
+        payroll.addEmployee('Deidre Bailey', 35.00, 'LPN');
+        payroll.addEmployee('Leanne West', 28.00, 'Care Aide');
+
+        function addEmployee() {
+            const name = document.getElementById('employeeName').value;
+            const hourlyRate = parseFloat(document.getElementById('hourlyRate').value);
+            const department = document.getElementById('department').value || 'General';
+
+            if (!name || !hourlyRate || hourlyRate <= 0) {
+                showAlert('Please enter valid employee name and hourly rate.', 'error');
+                return;
+            }
+
+            const employee = payroll.addEmployee(name, hourlyRate, department);
+            showAlert(`Employee ${name} added successfully!`, 'success');
+            
+            // Clear form
+            document.getElementById('employeeName').value = '';
+            document.getElementById('hourlyRate').value = '';
+            document.getElementById('department').value = '';
+            
+            updateEmployeeList();
+        }
+
+        function updateEmployeeList() {
+            const employeeList = document.getElementById('employeeList');
+            
+            if (payroll.employees.length === 0) {
+                employeeList.innerHTML = '<div class="alert">No employees added yet. Add an employee above to get started.</div>';
+                return;
+            }
+
+            employeeList.innerHTML = payroll.employees.map(emp => `
+                <div class="employee-item ${selectedEmployeeId === emp.id ? 'selected' : ''}" 
+                     onclick="selectEmployee(${emp.id})">
+                    <strong>${emp.name}</strong> - ${payroll.formatCurrency(emp.hourlyRate)}/hr - ${emp.department}
+                </div>
+            `).join('');
+        }
+
+        function selectEmployee(employeeId) {
+            selectedEmployeeId = employeeId;
+            updateEmployeeList();
+        }
+
+        function calculatePayroll() {
+            if (!selectedEmployeeId) {
+                showAlert('Please select an employee first.', 'error');
+                return;
+            }
+
+            const totalHours = parseFloat(document.getElementById('totalHours').value) || 0;
+            const overtimeHours = parseFloat(document.getElementById('overtimeHours').value) || 0;
+            const holidayHours = parseFloat(document.getElementById('holidayHours').value) || 0;
+            
+            const shiftPremiums = {
+                nightShiftHours: parseFloat(document.getElementById('nightShiftHours').value) || 0,
+                eveningShiftHours: parseFloat(document.getElementById('eveningShiftHours').value) || 0,
+                weekendHours: parseFloat(document.getElementById('weekendHours').value) || 0,
+                onCallHours: parseFloat(document.getElementById('onCallHours').value) || 0
+            };
+
+            const deductionRates = {
+                cppRate: (parseFloat(document.getElementById('cppRate').value) || 0) / 100,
+                eiRate: (parseFloat(document.getElementById('eiRate').value) || 0) / 100,
+                unionDues: parseFloat(document.getElementById('unionDues').value) || 0,
+                benefits: parseFloat(document.getElementById('benefits').value) || 0,
+                pensionRate: (parseFloat(document.getElementById('pensionRate').value) || 0) / 100,
+                parkingFees: parseFloat(document.getElementById('parkingFees').value) || 0
+            };
+
+            try {
+                const payrollRecord = payroll.calculatePayroll(selectedEmployeeId, {
+                    totalHours,
+                    overtimeHours,
+                    holidayHours,
+                    shiftPremiums,
+                    deductionRates,
+                    payPeriodStart: new Date(),
+                    payPeriodEnd: new Date()
+                });
+
+                displayPayStub(payrollRecord);
+                showAlert('Payroll calculated successfully!', 'success');
+            } catch (error) {
+                showAlert(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        function displayPayStub(payrollRecord) {
+            const resultsDiv = document.getElementById('results');
+            
+            resultsDiv.innerHTML = `
+                <div class="pay-stub">
+                    <div class="pay-stub-header">
+                        <div class="pay-stub-title">PAYROLL STUB</div>
+                        <div style="margin-top: 10px;">
+                            <strong>${payrollRecord.employeeName}</strong> (ID: ${payrollRecord.employeeId})<br>
+                            Pay Period: ${payrollRecord.payPeriodStart.toLocaleDateString()} - ${payrollRecord.payPeriodEnd.toLocaleDateString()}<br>
+                            Hourly Rate: ${payroll.formatCurrency(payrollRecord.pay.hourlyRate)}
+                        </div>
+                    </div>
+
+                    <div class="pay-stub-section">
+                        <h4>EARNINGS</h4>
+                        <div class="pay-row">
+                            <span>Regular Pay:</span>
+                            <span>${payroll.formatCurrency(payrollRecord.pay.regular)}</span>
+                        </div>
+                        <div class="pay-row">
+                            <span>Overtime Pay (1.5x):</span>
+                            <span>${payroll.formatCurrency(payrollRecord.pay.overtime)}</span>
+                        </div>
+                        <div class="pay-row">
+                            <span>Stat Holiday Pay (1.5x):</span>
+                            <span>${payroll.formatCurrency(payrollRecord.pay.holiday)}</span>
+                        </div>
+                        <div class="premium-breakdown">
+                            <div class="premium-title">Shift Premiums:</div>
+                            <div class="premium-row">
+                                <span>Night Shift (+$4/hr):</span>
+                                <span>${payroll.formatCurrency(payrollRecord.pay.shiftPremiums.nightShift)}</span>
+                            </div>
+                            <div class="premium-row">
+                                <span>Evening Shift (+$2/hr):</span>
+                                <span>${payroll.formatCurrency(payrollRecord.pay.shiftPremiums.eveningShift)}</span>
+                            </div>
+                            <div class="premium-row">
+                                <span>Weekend (+$2/hr):</span>
+                                <span>${payroll.formatCurrency(payrollRecord.pay.shiftPremiums.weekend)}</span>
+                            </div>
+                            <div class="premium-row">
+                                <span>On-Call (+$3/hr):</span>
+                                <span>${payroll.formatCurrency(payrollRecord.pay.shiftPremiums.onCall)}</span>
+                            </div>
+                        </div>
+                        <div class="pay-row total">
+                            <span>GROSS PAY:</span>
+                            <span>${payroll.formatCurrency(payrollRecord.pay.gross)}</span>
+                        </div>
+                    </div>
+
+                    <div class="pay-stub-section">
+                        <h4>DEDUCTIONS</h4>
+                        <div class="pay-row">
+                            <span>Federal Income Tax:</span>
+                            <span>${payroll.formatCurrency(payrollRecord.deductions.federalTax)}</span>
+                        </div>
+                        <div class="pay-row">
+                            <span>BC Provincial Tax:</span>
+                            <span>${payroll.formatCurrency(payrollRecord.deductions.provincialTax)}</span>
+                        </div>
+                        <div class="pay-row">
+                            <span>CPP Contributions:</span>
+                            <span>${payroll.formatCurrency(payrollRecord.deductions.cpp)}</span>
+                        </div>
+                        <div class="pay-row">
+                            <span>EI Premiums:</span>
+                            <span>${payroll.formatCurrency(payrollRecord.deductions.ei)}</span>
+                        </div>
+                        <div class="pay-row">
+                            <span>Union Dues:</span>
+                            <span>${payroll.formatCurrency(payrollRecord.deductions.unionDues)}</span>
+                        </div>
+                        <div class="pay-row">
+                            <span>Benefits:</span>
+                            <span>${payroll.formatCurrency(payrollRecord.deductions.benefits)}</span>
+                        </div>
+                        <div class="pay-row">
+                            <span>Pension:</span>
+                            <span>${payroll.formatCurrency(payrollRecord.deductions.pension)}</span>
+                        </div>
+                        <div class="pay-row">
+                            <span>Parking/Other:</span>
+                            <span>${payroll.formatCurrency(payrollRecord.deductions.parkingFees)}</span>
+                        </div>
+                        <div class="pay-row total">
+                            <span>TOTAL DEDUCTIONS:</span>
+                            <span>${payroll.formatCurrency(payrollRecord.deductions.total)}</span>
+                        </div>
+                    </div>
+
+                    <div class="pay-row net-pay">
+                        <span><strong>NET PAY:</strong></span>
+                        <span><strong>${payroll.formatCurrency(payrollRecord.netPay)}</strong></span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showAlert(message, type = 'info') {
+            // Remove existing alerts
+            const existingAlerts = document.querySelectorAll('.temp-alert');
+            existingAlerts.forEach(alert => alert.remove());
+
+            // Create new alert
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert ${type} temp-alert`;
+            alertDiv.textContent = message;
+            alertDiv.style.position = 'fixed';
+            alertDiv.style.top = '20px';
+            alertDiv.style.right = '20px';
+            alertDiv.style.zIndex = '1000';
+            alertDiv.style.maxWidth = '300px';
+
+            document.body.appendChild(alertDiv);
+
+            // Remove alert after 3 seconds
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 3000);
+        }
+
+        // Initialize the employee list on page load
+        updateEmployeeList();
+    </script>
 </body>
-</html>
+</html>    <div class="pay-stub-section">
+                        <h4>HOURS WORKED</h4>
+                        <div class="pay-row">
+                            <span>Total Hours:</span>
+                            <span>${payrollRecord.hours.total}</span>
+                        </div>
+                        <div class="pay-row">
+                            <span>Regular Hours:</span>
+                            <span>${payrollRecord.hours.regular}</span>
+                        </div>
+                        <div class="pay-row">
+                            <span>Overtime Hours:</span>
+                            <span>${payrollRecord.hours.overtime}</span>
+                        </div>
+                        <div class="pay-row">
+                            <span>Stat Holiday Hours:</span>
+                            <span>${payrollRecord.hours.holiday}</span>
+                        </div>
+                        <div class="premium-breakdown">
+                            <div class="premium-title">Premium Hours Breakdown:</div>
+                            <div class="premium-row">
+                                <span>Night Shift:</span>
+                                <span>${payrollRecord.hours.shiftPremiums.nightShiftHours || 0} hrs</span>
+                            </div>
+                            <div class="premium-row">
+                                <span>Evening Shift:</span>
+                                <span>${payrollRecord.hours.shiftPremiums.eveningShiftHours || 0} hrs</span>
+                            </div>
+                            <div class="premium-row">
+                                <span>Weekend:</span>
+                                <span>${payrollRecord.hours.shiftPremiums.weekendHours || 0} hrs</span>
+                            </div>
+                            <div class="premium-row">
+                                <span>On-Call:</span>
+                                <span>${payrollRecord.hours.shiftPremiums.onCallHours || 0} hrs</span>
+                            </div>
+                        </div>
+                    </div>
