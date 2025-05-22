@@ -334,15 +334,29 @@
                             <label for="totalHours">Total Hours Worked</label>
                             <input type="number" id="totalHours" step="0.5" placeholder="80">
                         </div>
-                        <div class="form-group">
-                            <label for="overtimeHours">Overtime Hours (>40)</label>
-                            <input type="number" id="overtimeHours" step="0.5" placeholder="40">
-                        </div>
                     </div>
+                    
+                    <h4 class="hours-subtitle">Overtime Hours</h4>
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="holidayHours">Stat Holiday Hours</label>
-                            <input type="number" id="holidayHours" step="0.5" placeholder="7.5">
+                            <label for="overtimeHours15">OT Hours (1.5x rate)</label>
+                            <input type="number" id="overtimeHours15" step="0.5" placeholder="8" title="First 8 hours of overtime at 1.5x rate">
+                        </div>
+                        <div class="form-group">
+                            <label for="overtimeHours20">OT Hours (2.0x rate)</label>
+                            <input type="number" id="overtimeHours20" step="0.5" placeholder="0" title="Hours beyond 8 OT hours at 2.0x rate">
+                        </div>
+                    </div>
+                    
+                    <h4 class="hours-subtitle">Holiday Hours</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="holidayHours15">Regular Holiday (1.5x)</label>
+                            <input type="number" id="holidayHours15" step="0.5" placeholder="0" title="Standard stat holidays at 1.5x rate">
+                        </div>
+                        <div class="form-group">
+                            <label for="holidayHours20">Premium Holiday (2.0x)</label>
+                            <input type="number" id="holidayHours20" step="0.5" placeholder="7.5" title="Christmas, New Year's at 2.0x rate">
                         </div>
                     </div>
                     
@@ -446,8 +460,24 @@
                 return regularHours * hourlyRate;
             }
 
-            calculateHolidayPay(holidayHours, hourlyRate, holidayMultiplier = 1.5) {
-                return holidayHours * hourlyRate * holidayMultiplier;
+            calculateOvertimePay(overtimeHours15, overtimeHours20, hourlyRate) {
+                const overtime15Pay = overtimeHours15 * hourlyRate * 1.5;
+                const overtime20Pay = overtimeHours20 * hourlyRate * 2.0;
+                return {
+                    overtime15: overtime15Pay,
+                    overtime20: overtime20Pay,
+                    total: overtime15Pay + overtime20Pay
+                };
+            }
+
+            calculateHolidayPay(holidayHours15, holidayHours20, hourlyRate) {
+                const holiday15Pay = holidayHours15 * hourlyRate * 1.5;
+                const holiday20Pay = holidayHours20 * hourlyRate * 2.0;
+                return {
+                    holiday15: holiday15Pay,
+                    holiday20: holiday20Pay,
+                    total: holiday15Pay + holiday20Pay
+                };
             }
 
             // Calculate premium pay for different shift types
