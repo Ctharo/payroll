@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Payroll Calendar</title>
+    <title>Simple Payroll Calculator</title>
     <style>
         * {
             box-sizing: border-box;
@@ -19,7 +19,7 @@
         }
 
         .container {
-            max-width: 1600px;
+            max-width: 1200px;
             margin: 0 auto;
             background: white;
             border-radius: 15px;
@@ -50,16 +50,16 @@
             min-height: 600px;
         }
 
-        .calendar-section {
-            flex: 2;
-            min-width: 800px;
+        .form-section {
+            flex: 1;
+            min-width: 500px;
             padding: 30px;
             background: #f8f9fa;
         }
 
         .results-section {
             flex: 1;
-            min-width: 400px;
+            min-width: 500px;
             padding: 30px;
             background: white;
         }
@@ -72,231 +72,8 @@
             padding-bottom: 10px;
         }
 
-        .employee-selector {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border: 2px solid #e0e0e0;
-        }
-
-        .employee-item {
-            background: #f8f9fa;
-            padding: 10px 15px;
-            margin-bottom: 8px;
-            border-radius: 5px;
-            border-left: 4px solid #3498db;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .employee-item:hover {
-            background: #ecf0f1;
-            transform: translateX(5px);
-        }
-
-        .employee-item.selected {
-            border-left-color: #27ae60;
-            background: #e8f5e8;
-        }
-
-        .employee-management {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border: 2px solid #e0e0e0;
-            display: none;
-        }
-
-        .employee-management.show {
-            display: block;
-        }
-
-        .toggle-btn {
-            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
-            color: white;
-            padding: 8px 15px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            margin-bottom: 15px;
-        }
-
-        .template-buttons {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border: 2px solid #e0e0e0;
-        }
-
-        .template-row {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-
-        .btn-template {
-            background: linear-gradient(135deg, #16a085 0%, #27ae60 100%);
-            color: white;
-            padding: 12px 15px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            flex: 1;
-            text-align: center;
-            font-size: 14px;
-            line-height: 1.2;
-            transition: transform 0.2s ease;
-        }
-
-        .btn-template:hover {
-            transform: translateY(-2px);
-            background: linear-gradient(135deg, #138d75 0%, #229954 100%);
-        }
-
-        .btn-template.day-shift {
-            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
-        }
-
-        .btn-template.evening-shift {
-            background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);
-        }
-
-        .btn-template.night-shift {
-            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-        }
-
-        .calendar-container {
-            background: white;
-            border-radius: 8px;
-            overflow: hidden;
-            border: 2px solid #e0e0e0;
-        }
-
-        .calendar-header {
-            background: #34495e;
-            color: white;
-            padding: 15px;
-            text-align: center;
-            font-weight: bold;
-        }
-
-        .calendar-nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #2c3e50;
-            padding: 10px 20px;
-            color: white;
-        }
-
-        .nav-btn {
-            background: #3498db;
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        .nav-btn:hover {
-            background: #2980b9;
-        }
-
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-        }
-
-        .day-header {
-            background: #ecf0f1;
-            padding: 10px;
-            text-align: center;
-            font-weight: bold;
-            color: #2c3e50;
-            border-bottom: 1px solid #bdc3c7;
-        }
-
-        .calendar-cell {
-            min-height: 120px;
-            border: 1px solid #e0e0e0;
-            padding: 8px;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-            position: relative;
-        }
-
-        .calendar-cell:hover {
-            background: #f8f9fa;
-        }
-
-        .calendar-cell.selected {
-            background: #e3f2fd;
-            border-color: #2196f3;
-        }
-
-        .calendar-cell.weekend {
-            background: #faf6ff;
-        }
-
-        .calendar-cell.holiday {
-            background: #fff3e0;
-        }
-
-        .cell-date {
-            font-weight: bold;
-            color: #2c3e50;
-            margin-bottom: 5px;
-        }
-
-        .cell-shifts {
-            font-size: 11px;
-        }
-
-        .shift-item {
-            background: #3498db;
-            color: white;
-            padding: 2px 4px;
-            border-radius: 3px;
-            margin-bottom: 2px;
-            font-size: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .shift-item.day-shift {
-            background: #f39c12;
-        }
-
-        .shift-item.evening-shift {
-            background: #8e44ad;
-        }
-
-        .shift-item.night-shift {
-            background: #2c3e50;
-        }
-
-        .shift-item.holiday {
-            background: #e74c3c;
-        }
-
-        .shift-remove {
-            cursor: pointer;
-            margin-left: 5px;
-            font-weight: bold;
-        }
-
-        .shift-remove:hover {
-            background: rgba(255,255,255,0.3);
-            border-radius: 2px;
-        }
-
         .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
 
         .form-row {
@@ -319,10 +96,17 @@
 
         input, select {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             border: 2px solid #e0e0e0;
-            border-radius: 5px;
-            font-size: 14px;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
         }
 
         .btn {
@@ -334,19 +118,129 @@
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s ease;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
             width: 100%;
+            margin-top: 10px;
         }
 
         .btn:hover {
             transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
         }
 
         .btn-secondary {
             background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+            margin-right: 10px;
             width: auto;
-            padding: 8px 15px;
-            font-size: 14px;
+            display: inline-block;
+        }
+
+        .pay-stub {
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 25px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .pay-stub-header {
+            text-align: center;
+            border-bottom: 2px solid #34495e;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        .pay-stub-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .pay-stub-section {
+            margin-bottom: 20px;
+        }
+
+        .pay-stub-section h4 {
+            color: #34495e;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            border-bottom: 1px solid #bdc3c7;
+            padding-bottom: 5px;
+        }
+
+        .pay-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+
+        .pay-row.total {
+            font-weight: bold;
+            border-top: 1px solid #34495e;
+            padding-top: 8px;
+            margin-top: 8px;
+        }
+
+        .pay-row.gross-pay {
+            font-size: 1.2em;
+            background: #e8f5e8;
+            padding: 10px;
+            border-radius: 5px;
+            border: 2px solid #27ae60;
+        }
+
+        .premium-breakdown {
+            margin-left: 20px;
+            border-left: 2px solid #bdc3c7;
+            padding-left: 10px;
+            margin-top: 10px;
+            background: #f9f9f9;
+            border-radius: 5px;
+            padding: 10px;
+        }
+
+        .premium-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #34495e;
+            font-size: 0.95em;
+        }
+
+        .premium-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        .employee-list {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .employee-item {
+            background: white;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .employee-item:hover {
+            background: #ecf0f1;
+            transform: translateX(5px);
+        }
+
+        .employee-item.selected {
+            border-left-color: #27ae60;
+            background: #e8f5e8;
         }
 
         .alert {
@@ -366,104 +260,25 @@
             background: #e74c3c;
         }
 
-        .alert.info {
-            background: #3498db;
-        }
-
-        .pay-stub {
-            background: #f8f9fa;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            padding: 25px;
+        .hours-subtitle {
             margin-top: 20px;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-        }
-
-        .pay-stub-header {
-            text-align: center;
-            border-bottom: 2px solid #34495e;
-            padding-bottom: 15px;
-            margin-bottom: 20px;
-        }
-
-        .pay-stub-title {
-            font-size: 1.3em;
-            font-weight: bold;
-            color: #2c3e50;
-        }
-
-        .pay-stub-section {
-            margin-bottom: 15px;
-        }
-
-        .pay-stub-section h4 {
+            margin-bottom: 10px;
             color: #34495e;
-            margin-bottom: 8px;
-            font-size: 1em;
-            border-bottom: 1px solid #bdc3c7;
-            padding-bottom: 3px;
-        }
-
-        .pay-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 3px;
-            padding: 1px 0;
-        }
-
-        .pay-row.gross-pay {
             font-size: 1.1em;
-            background: #e8f5e8;
-            padding: 8px;
-            border-radius: 5px;
-            border: 2px solid #27ae60;
-            font-weight: bold;
-            margin-top: 10px;
+            font-weight: 600;
         }
 
-        .summary-stats {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .stat-card {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            border-left: 4px solid #3498db;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 1.5em;
-            font-weight: bold;
-            color: #2c3e50;
-        }
-
-        .stat-label {
-            font-size: 0.9em;
-            color: #7f8c8d;
-            margin-top: 5px;
-        }
-
-        @media (max-width: 1200px) {
+        @media (max-width: 768px) {
             .main-content {
                 flex-direction: column;
             }
             
-            .calendar-section, .results-section {
+            .form-section, .results-section {
                 min-width: auto;
             }
-
-            .calendar-grid {
-                font-size: 12px;
-            }
-
-            .calendar-cell {
-                min-height: 80px;
+            
+            .form-row {
+                flex-direction: column;
             }
         }
     </style>
@@ -471,40 +286,65 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📅 Smart Payroll Calendar</h1>
-            <p>Click calendar cells to add shifts - automatic calculation of premiums and overtime</p>
+            <h1>💼 Simple Payroll Calculator</h1>
+            <p>Calculate wages, overtime, holiday pay, and shift premiums for BC healthcare workers</p>
         </div>
 
         <div class="main-content">
-            <div class="calendar-section">
-                <h2 class="section-title">Schedule & Shifts</h2>
+            <div class="form-section">
+                <h2 class="section-title">Employee & Payroll Setup</h2>
                 
-                <!-- Employee Selector -->
-                <div class="employee-selector">
-                    <h4>Select Employee:</h4>
-                    <div id="employeeList">
-                        <div class="alert">Loading employees...</div>
+                <!-- Settings Section -->
+                <div class="form-group" style="background: #e8f5e9; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                    <h3>⚙️ Payroll Settings</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="defaultHourlyRate">Default Hourly Rate ($)</label>
+                            <input type="number" id="defaultHourlyRate" step="0.01" value="30.00">
+                        </div>
                     </div>
-                    <button class="toggle-btn" onclick="toggleEmployeeManagement()">+ Manage Employees</button>
+                    
+                    <h4 class="hours-subtitle">Shift Premium Rates ($/hr)</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="nightShiftPremium">Night Shift Premium</label>
+                            <input type="number" id="nightShiftPremium" step="0.01" value="4.00">
+                        </div>
+                        <div class="form-group">
+                            <label for="eveningShiftPremium">Evening Shift Premium</label>
+                            <input type="number" id="eveningShiftPremium" step="0.01" value="2.00">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="weekendPremium">Weekend Premium</label>
+                            <input type="number" id="weekendPremium" step="0.01" value="2.00">
+                        </div>
+                        <div class="form-group">
+                            <label for="onCallPremium">On-Call Premium</label>
+                            <input type="number" id="onCallPremium" step="0.01" value="3.00">
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary" onclick="saveSettings()">Save Settings</button>
                 </div>
-
-                <!-- Employee Management (Hidden by default) -->
-                <div class="employee-management" id="employeeManagement">
-                    <h4>Add New Employee</h4>
+                
+                <!-- Employee Management -->
+                <div class="form-group">
+                    <h3>Add New Employee</h3>
                     <div class="form-row">
                         <div class="form-group">
                             <label for="employeeName">Name</label>
-                            <input type="text" id="employeeName" placeholder="Enter employee name">
+                            <input type="text" id="employeeName" placeholder="John Smith">
                         </div>
                         <div class="form-group">
                             <label for="hourlyRate">Hourly Rate ($)</label>
-                            <input type="number" id="hourlyRate" step="0.01" placeholder="0.00">
+                            <input type="number" id="hourlyRate" step="0.01" placeholder="25.00">
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
                             <label for="department">Department</label>
-                            <input type="text" id="department" placeholder="Enter department">
+                            <input type="text" id="department" placeholder="Engineering">
                         </div>
                         <div class="form-group">
                             <button class="btn btn-secondary" onclick="addEmployee()">Add Employee</button>
@@ -512,75 +352,79 @@
                     </div>
                 </div>
 
-                <!-- Quick Shift Templates -->
-                <div class="template-buttons">
-                    <h4 style="margin-bottom: 10px;">Quick Add Shifts:</h4>
-                    <div class="template-row">
-                        <button class="btn-template day-shift" onclick="setSelectedShiftType('day')">
-                            ☀️ Day Shift<br><small>07:00 - 15:00</small>
-                        </button>
-                        <button class="btn-template evening-shift" onclick="setSelectedShiftType('evening')">
-                            🌅 Evening<br><small>15:00 - 23:00</small>
-                        </button>
-                        <button class="btn-template night-shift" onclick="setSelectedShiftType('night')">
-                            🌙 Night<br><small>23:00 - 07:00</small>
-                        </button>
-                    </div>
-                    <div style="text-align: center; margin-top: 10px; font-size: 12px; color: #7f8c8d;">
-                        Select shift type above, then click calendar cells to add shifts
+                <!-- Employee List -->
+                <div class="employee-list">
+                    <h4>Select Employee:</h4>
+                    <div id="employeeList">
+                        <div class="alert">No employees added yet. Add an employee above to get started.</div>
                     </div>
                 </div>
 
-                <!-- Calendar -->
-                <div class="calendar-container">
-                    <div class="calendar-nav">
-                        <button class="nav-btn" onclick="changeWeek(-1)">← Previous</button>
-                        <span id="calendarTitle">2 Week Schedule</span>
-                        <button class="nav-btn" onclick="changeWeek(1)">Next →</button>
+                <!-- Payroll Calculation -->
+                <div class="form-group">
+                    <h3>Hours Worked</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="totalHours">Total Hours Worked</label>
+                            <input type="number" id="totalHours" step="0.5" placeholder="80">
+                        </div>
                     </div>
-                    <div class="calendar-grid">
-                        <div class="day-header">Sunday</div>
-                        <div class="day-header">Monday</div>
-                        <div class="day-header">Tuesday</div>
-                        <div class="day-header">Wednesday</div>
-                        <div class="day-header">Thursday</div>
-                        <div class="day-header">Friday</div>
-                        <div class="day-header">Saturday</div>
+                    
+                    <h4 class="hours-subtitle">Overtime Hours</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="overtimeHours15">OT Hours (1.5x rate)</label>
+                            <input type="number" id="overtimeHours15" step="0.5" placeholder="8" title="First 8 hours of overtime at 1.5x rate">
+                        </div>
+                        <div class="form-group">
+                            <label for="overtimeHours20">OT Hours (2.0x rate)</label>
+                            <input type="number" id="overtimeHours20" step="0.5" placeholder="0" title="Hours beyond 8 OT hours at 2.0x rate">
+                        </div>
                     </div>
-                    <div class="calendar-grid" id="calendarGrid">
-                        <!-- Calendar cells will be generated here -->
+                    
+                    <h4 class="hours-subtitle">Holiday Hours</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="holidayHours15">Regular Holiday (1.5x)</label>
+                            <input type="number" id="holidayHours15" step="0.5" placeholder="0" title="Standard stat holidays at 1.5x rate">
+                        </div>
+                        <div class="form-group">
+                            <label for="holidayHours20">Premium Holiday (2.0x)</label>
+                            <input type="number" id="holidayHours20" step="0.5" placeholder="7.5" title="Christmas, New Year's at 2.0x rate">
+                        </div>
+                    </div>
+                    
+                    <h4 class="hours-subtitle">Premium Hours (subset of total hours)</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="nightShiftHours">Night Shift Hours (+$4/hr)</label>
+                            <input type="number" id="nightShiftHours" step="0.5" placeholder="16">
+                        </div>
+                        <div class="form-group">
+                            <label for="eveningShiftHours">Evening Shift Hours (+$2/hr)</label>
+                            <input type="number" id="eveningShiftHours" step="0.5" placeholder="7.5">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="weekendHours">Weekend Hours (+$2/hr)</label>
+                            <input type="number" id="weekendHours" step="0.5" placeholder="30">
+                        </div>
+                        <div class="form-group">
+                            <label for="onCallHours">On-Call Hours (+$3/hr)</label>
+                            <input type="number" id="onCallHours" step="0.5" placeholder="0">
+                        </div>
                     </div>
                 </div>
 
-                <button class="btn" onclick="calculatePayroll()" style="margin-top: 20px;">Calculate Payroll for Period</button>
+                <button class="btn" onclick="calculatePayroll()">Calculate Payroll</button>
             </div>
 
             <div class="results-section">
                 <h2 class="section-title">Payroll Results</h2>
-                
-                <!-- Summary Stats -->
-                <div id="summaryStats" class="summary-stats" style="display: none;">
-                    <div class="stat-card">
-                        <div class="stat-value" id="totalHoursStat">0</div>
-                        <div class="stat-label">Total Hours</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="overtimeHoursStat">0</div>
-                        <div class="stat-label">Overtime Hours</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="weekendHoursStat">0</div>
-                        <div class="stat-label">Weekend Hours</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="nightHoursStat">0</div>
-                        <div class="stat-label">Night Hours</div>
-                    </div>
-                </div>
-
                 <div id="results">
                     <div class="alert">
-                        Select an employee and add shifts to the calendar to calculate payroll.
+                        Select an employee and enter hours to calculate payroll.
                     </div>
                 </div>
             </div>
@@ -588,24 +432,43 @@
     </div>
 
     <script>
-        class SmartPayrollCalculator {
+        class PayrollCalculator {
             constructor() {
                 this.employees = [];
-                this.shifts = [];
                 this.payPeriods = [];
                 this.nextId = 1;
-                this.nextShiftId = 1;
-                this.currentWeekStart = this.getWeekStart(new Date());
-                this.selectedShiftType = 'day';
-                
-                // BC Statutory Holidays 2025
-                this.holidays = [
-                    '2025-01-01', '2025-02-17', '2025-03-29', '2025-05-19',
-                    '2025-07-01', '2025-08-04', '2025-09-01', '2025-10-13',
-                    '2025-11-11', '2025-12-25', '2025-12-26'
-                ];
+                // Default settings
+                this.settings = {
+                    defaultHourlyRate: 30.00,
+                    shiftPremiums: {
+                        nightShift: 4.00,
+                        eveningShift: 2.00,
+                        weekend: 2.00,
+                        onCall: 3.00
+                    }
+                };
+                this.loadSettings();
+            }
 
-                this.premiumHolidays = ['2025-01-01', '2025-12-25'];
+            loadSettings() {
+                const savedSettings = localStorage.getItem('payrollSettings');
+                if (savedSettings) {
+                    this.settings = JSON.parse(savedSettings);
+                    this.updateSettingsUI();
+                }
+            }
+
+            saveSettings(settings) {
+                this.settings = settings;
+                localStorage.setItem('payrollSettings', JSON.stringify(settings));
+            }
+
+            updateSettingsUI() {
+                document.getElementById('defaultHourlyRate').value = this.settings.defaultHourlyRate;
+                document.getElementById('nightShiftPremium').value = this.settings.shiftPremiums.nightShift;
+                document.getElementById('eveningShiftPremium').value = this.settings.shiftPremiums.eveningShift;
+                document.getElementById('weekendPremium').value = this.settings.shiftPremiums.weekend;
+                document.getElementById('onCallPremium').value = this.settings.shiftPremiums.onCall;
             }
 
             addEmployee(name, hourlyRate, department = 'General') {
@@ -624,208 +487,112 @@
                 return this.employees.find(emp => emp.id === id);
             }
 
-            addShift(employeeId, date, shiftType = 'day') {
-                const shiftTimes = {
-                    day: { start: '07:00', end: '15:00' },
-                    evening: { start: '15:00', end: '23:00' },
-                    night: { start: '23:00', end: '07:00' }
+            calculateRegularPay(regularHours, hourlyRate) {
+                return regularHours * hourlyRate;
+            }
+
+            calculateOvertimePay(overtimeHours15, overtimeHours20, hourlyRate) {
+                const overtime15Pay = overtimeHours15 * hourlyRate * 1.5;
+                const overtime20Pay = overtimeHours20 * hourlyRate * 2.0;
+                return {
+                    overtime15: overtime15Pay,
+                    overtime20: overtime20Pay,
+                    total: overtime15Pay + overtime20Pay
                 };
+            }
 
-                const times = shiftTimes[shiftType];
-                const startDateTime = new Date(`${date}T${times.start}`);
-                const endDateTime = new Date(`${date}T${times.end}`);
-                
-                // Handle overnight shifts
-                if (endDateTime < startDateTime) {
-                    endDateTime.setDate(endDateTime.getDate() + 1);
-                }
-
-                const duration = (endDateTime - startDateTime) / (1000 * 60 * 60);
-
-                const shift = {
-                    id: this.nextShiftId++,
-                    employeeId,
-                    date,
-                    shiftType,
-                    startTime: times.start,
-                    endTime: times.end,
-                    startDateTime,
-                    endDateTime,
-                    duration,
-                    premiums: this.calculateShiftPremiums(startDateTime, endDateTime, date)
+            calculateHolidayPay(holidayHours15, holidayHours20, hourlyRate) {
+                const holiday15Pay = holidayHours15 * hourlyRate * 1.5;
+                const holiday20Pay = holidayHours20 * hourlyRate * 2.0;
+                return {
+                    holiday15: holiday15Pay,
+                    holiday20: holiday20Pay,
+                    total: holiday15Pay + holiday20Pay
                 };
-
-                this.shifts.push(shift);
-                return shift;
             }
 
-            calculateShiftPremiums(startDateTime, endDateTime, date) {
-                const premiums = {
-                    isWeekend: false,
-                    isHoliday: false,
-                    isPremiumHoliday: false,
-                    nightHours: 0,
-                    eveningHours: 0,
-                    weekendHours: 0,
-                    holidayHours: 0
+            // Calculate premium pay for different shift types
+            calculateShiftPremiums(shiftPremiums, hourlyRate) {
+                const {
+                    nightShiftHours = 0,
+                    eveningShiftHours = 0,
+                    weekendHours = 0,
+                    onCallHours = 0
+                } = shiftPremiums;
+
+                const premiumRates = this.settings.shiftPremiums;
+
+                return {
+                    nightShift: nightShiftHours * premiumRates.nightShift,
+                    eveningShift: eveningShiftHours * premiumRates.eveningShift,
+                    weekend: weekendHours * premiumRates.weekend,
+                    onCall: onCallHours * premiumRates.onCall,
+                    total: (nightShiftHours * premiumRates.nightShift) + 
+                           (eveningShiftHours * premiumRates.eveningShift) + 
+                           (weekendHours * premiumRates.weekend) + 
+                           (onCallHours * premiumRates.onCall)
                 };
-
-                const dayOfWeek = startDateTime.getDay();
-                premiums.isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-                premiums.isHoliday = this.holidays.includes(date);
-                premiums.isPremiumHoliday = this.premiumHolidays.includes(date);
-
-                let currentTime = new Date(startDateTime);
-                while (currentTime < endDateTime) {
-                    const hour = currentTime.getHours();
-                    
-                    if (hour >= 23 || hour < 7) {
-                        premiums.nightHours += 1;
-                    } else if (hour >= 15 && hour < 23) {
-                        premiums.eveningHours += 1;
-                    }
-
-                    if (premiums.isWeekend) {
-                        premiums.weekendHours += 1;
-                    }
-
-                    if (premiums.isHoliday) {
-                        premiums.holidayHours += 1;
-                    }
-
-                    currentTime.setHours(currentTime.getHours() + 1);
-                }
-
-                return premiums;
             }
 
-            getShiftsInPeriod(employeeId, startDate, endDate) {
-                return this.shifts.filter(shift => 
-                    shift.employeeId === employeeId &&
-                    shift.date >= startDate &&
-                    shift.date <= endDate
-                );
-            }
-
-            calculateOvertimeForPeriod(shifts) {
-                const dailyHours = {};
-                const weeklyHours = {};
-
-                shifts.forEach(shift => {
-                    const date = shift.date;
-                    const weekStart = this.getWeekStart(new Date(date));
-                    const weekKey = weekStart.toISOString().split('T')[0];
-
-                    if (!dailyHours[date]) dailyHours[date] = 0;
-                    dailyHours[date] += shift.duration;
-
-                    if (!weeklyHours[weekKey]) weeklyHours[weekKey] = 0;
-                    weeklyHours[weekKey] += shift.duration;
-                });
-
-                let overtimeHours15 = 0;
-                let overtimeHours20 = 0;
-
-                Object.values(dailyHours).forEach(dayHours => {
-                    if (dayHours > 8) {
-                        const dailyOT = Math.min(dayHours - 8, 4);
-                        overtimeHours15 += dailyOT;
-                        
-                        if (dayHours > 12) {
-                            overtimeHours20 += dayHours - 12;
-                        }
-                    }
-                });
-
-                Object.values(weeklyHours).forEach(weekHours => {
-                    if (weekHours > 40) {
-                        const weeklyOT = weekHours - 40;
-                        overtimeHours15 += Math.max(0, weeklyOT - overtimeHours15);
-                    }
-                });
-
-                return { overtimeHours15, overtimeHours20 };
-            }
-
-            getWeekStart(date) {
-                const d = new Date(date);
-                const day = d.getDay();
-                const diff = d.getDate() - day;
-                return new Date(d.setDate(diff));
-            }
-
-            calculatePayroll(employeeId, payPeriodStart, payPeriodEnd) {
+            calculatePayroll(employeeId, payPeriodData) {
                 const employee = this.getEmployee(employeeId);
                 if (!employee) {
                     throw new Error(`Employee with ID ${employeeId} not found`);
                 }
 
-                const shifts = this.getShiftsInPeriod(employeeId, payPeriodStart, payPeriodEnd);
-                if (shifts.length === 0) {
-                    throw new Error('No shifts found for the selected pay period');
-                }
+                const {
+                    totalHours = 0,
+                    overtimeHours15 = 0,
+                    overtimeHours20 = 0,
+                    holidayHours15 = 0,
+                    holidayHours20 = 0,
+                    shiftPremiums = {},
+                    payPeriodStart,
+                    payPeriodEnd
+                } = payPeriodData;
 
-                const totalHours = shifts.reduce((sum, shift) => sum + shift.duration, 0);
-                const nightHours = shifts.reduce((sum, shift) => sum + shift.premiums.nightHours, 0);
-                const eveningHours = shifts.reduce((sum, shift) => sum + shift.premiums.eveningHours, 0);
-                const weekendHours = shifts.reduce((sum, shift) => sum + shift.premiums.weekendHours, 0);
+                // Calculate regular hours (total - overtime - holiday)
+                const totalOvertimeHours = overtimeHours15 + overtimeHours20;
+                const totalHolidayHours = holidayHours15 + holidayHours20;
+                const regularHours = Math.max(0, totalHours - totalOvertimeHours - totalHolidayHours);
 
-                const holidayHours15 = shifts.reduce((sum, shift) => {
-                    return sum + (shift.premiums.isHoliday && !shift.premiums.isPremiumHoliday ? shift.duration : 0);
-                }, 0);
-                const holidayHours20 = shifts.reduce((sum, shift) => {
-                    return sum + (shift.premiums.isPremiumHoliday ? shift.duration : 0);
-                }, 0);
+                // Calculate different types of pay
+                const regularPay = this.calculateRegularPay(regularHours, employee.hourlyRate);
+                const overtimePay = this.calculateOvertimePay(overtimeHours15, overtimeHours20, employee.hourlyRate);
+                const holidayPay = this.calculateHolidayPay(holidayHours15, holidayHours20, employee.hourlyRate);
+                const shiftPremiumPay = this.calculateShiftPremiums(shiftPremiums, employee.hourlyRate);
 
-                const overtime = this.calculateOvertimeForPeriod(shifts);
-                const totalSpecialHours = overtime.overtimeHours15 + overtime.overtimeHours20 + holidayHours15 + holidayHours20;
-                const regularHours = Math.max(0, totalHours - totalSpecialHours);
+                // Calculate gross pay
+                const grossPay = regularPay + overtimePay.total + holidayPay.total + shiftPremiumPay.total;
 
-                const regularPay = regularHours * employee.hourlyRate;
-                const overtime15Pay = overtime.overtimeHours15 * employee.hourlyRate * 1.5;
-                const overtime20Pay = overtime.overtimeHours20 * employee.hourlyRate * 2.0;
-                const holiday15Pay = holidayHours15 * employee.hourlyRate * 1.5;
-                const holiday20Pay = holidayHours20 * employee.hourlyRate * 2.0;
-
-                const nightPremium = nightHours * 4.00;
-                const eveningPremium = eveningHours * 2.00;
-                const weekendPremium = weekendHours * 2.00;
-
-                const grossPay = regularPay + overtime15Pay + overtime20Pay + 
-                               holiday15Pay + holiday20Pay + nightPremium + 
-                               eveningPremium + weekendPremium;
-
-                return {
+                // Create payroll record
+                const payrollRecord = {
                     employeeId: employee.id,
                     employeeName: employee.name,
-                    payPeriodStart,
-                    payPeriodEnd,
-                    shifts,
+                    payPeriodStart: payPeriodStart || new Date(),
+                    payPeriodEnd: payPeriodEnd || new Date(),
                     hours: {
                         total: totalHours,
                         regular: regularHours,
-                        overtimeHours15: overtime.overtimeHours15,
-                        overtimeHours20: overtime.overtimeHours20,
+                        overtimeHours15,
+                        overtimeHours20,
                         holidayHours15,
                         holidayHours20,
-                        nightHours,
-                        eveningHours,
-                        weekendHours
+                        shiftPremiums: shiftPremiums
                     },
                     pay: {
                         hourlyRate: employee.hourlyRate,
                         regular: regularPay,
-                        overtime15: overtime15Pay,
-                        overtime20: overtime20Pay,
-                        holiday15: holiday15Pay,
-                        holiday20: holiday20Pay,
-                        nightPremium,
-                        eveningPremium,
-                        weekendPremium,
+                        overtime: overtimePay,
+                        holiday: holidayPay,
+                        shiftPremiums: shiftPremiumPay,
                         gross: grossPay
                     },
                     calculatedAt: new Date()
                 };
+
+                this.payPeriods.push(payrollRecord);
+                return payrollRecord;
             }
 
             formatCurrency(amount) {
@@ -834,165 +601,61 @@
                     currency: 'CAD'
                 }).format(amount);
             }
-
-            removeShift(shiftId) {
-                this.shifts = this.shifts.filter(shift => shift.id !== shiftId);
-            }
         }
 
         // Initialize payroll calculator
-        const payroll = new SmartPayrollCalculator();
+        const payroll = new PayrollCalculator();
         let selectedEmployeeId = null;
 
-        // Add sample employees
+        // Add some sample employees
         payroll.addEmployee('Layne Trudeau', 50.00, 'RN');
         payroll.addEmployee('Domonique Ballsack', 35.00, 'LPN');
         payroll.addEmployee('Lizzie Westerly', 28.00, 'Care Aide');
 
-        function toggleEmployeeManagement() {
-            const section = document.getElementById('employeeManagement');
-            const btn = document.querySelector('.toggle-btn');
-            
-            if (section.classList.contains('show')) {
-                section.classList.remove('show');
-                btn.textContent = '+ Manage Employees';
-            } else {
-                section.classList.add('show');
-                btn.textContent = '- Hide Employee Management';
-            }
-        }
-
-        function setSelectedShiftType(type) {
-            payroll.selectedShiftType = type;
-            
-            // Update button visual feedback
-            document.querySelectorAll('.btn-template').forEach(btn => {
-                btn.style.transform = '';
-            });
-            
-            event.target.style.transform = 'scale(0.95)';
-            setTimeout(() => {
-                event.target.style.transform = '';
-            }, 150);
-        }
-
-        function generateCalendar() {
-            const grid = document.getElementById('calendarGrid');
-            grid.innerHTML = '';
-            
-            const startDate = new Date(payroll.currentWeekStart);
-            
-            // Generate 14 days (2 weeks)
-            for (let i = 0; i < 14; i++) {
-                const cellDate = new Date(startDate);
-                cellDate.setDate(startDate.getDate() + i);
-                
-                const dateStr = cellDate.toISOString().split('T')[0];
-                const dayOfWeek = cellDate.getDay();
-                const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-                const isHoliday = payroll.holidays.includes(dateStr);
-                
-                const cell = document.createElement('div');
-                cell.className = `calendar-cell ${isWeekend ? 'weekend' : ''} ${isHoliday ? 'holiday' : ''}`;
-                cell.setAttribute('data-date', dateStr);
-                cell.onclick = () => addShiftToDate(dateStr);
-                
-                const dayNum = cellDate.getDate();
-                const monthName = cellDate.toLocaleDateString('en-US', { month: 'short' });
-                
-                cell.innerHTML = `
-                    <div class="cell-date">${monthName} ${dayNum}</div>
-                    <div class="cell-shifts" id="shifts-${dateStr}"></div>
-                `;
-                
-                grid.appendChild(cell);
-            }
-            
-            updateCalendarTitle();
-            updateShiftsDisplay();
-        }
-
-        function updateCalendarTitle() {
-            const start = new Date(payroll.currentWeekStart);
-            const end = new Date(start);
-            end.setDate(start.getDate() + 13);
-            
-            const title = `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
-            document.getElementById('calendarTitle').textContent = title;
-        }
-
-        function changeWeek(direction) {
-            const newDate = new Date(payroll.currentWeekStart);
-            newDate.setDate(newDate.getDate() + (direction * 14)); // Move by 2 weeks
-            payroll.currentWeekStart = newDate;
-            generateCalendar();
-        }
-
-        function addShiftToDate(date) {
-            if (!selectedEmployeeId) {
-                showAlert('Please select an employee first.', 'error');
-                return;
-            }
-
-            try {
-                const shift = payroll.addShift(selectedEmployeeId, date, payroll.selectedShiftType);
-                showAlert(`${payroll.selectedShiftType.charAt(0).toUpperCase() + payroll.selectedShiftType.slice(1)} shift added for ${date}`, 'success');
-                updateShiftsDisplay();
-            } catch (error) {
-                showAlert(`Error: ${error.message}`, 'error');
-            }
-        }
-
-        function updateShiftsDisplay() {
-            if (!selectedEmployeeId) return;
-            
-            // Clear all shift displays
-            document.querySelectorAll('[id^="shifts-"]').forEach(el => {
-                el.innerHTML = '';
-            });
-            
-            // Get shifts for current employee in current 2-week period
-            const startDate = payroll.currentWeekStart.toISOString().split('T')[0];
-            const endDate = new Date(payroll.currentWeekStart);
-            endDate.setDate(endDate.getDate() + 13);
-            const endDateStr = endDate.toISOString().split('T')[0];
-            
-            const shifts = payroll.getShiftsInPeriod(selectedEmployeeId, startDate, endDateStr);
-            
-            shifts.forEach(shift => {
-                const shiftEl = document.getElementById(`shifts-${shift.date}`);
-                if (shiftEl) {
-                    const shiftItem = document.createElement('div');
-                    shiftItem.className = `shift-item ${shift.shiftType}-shift ${shift.premiums.isHoliday ? 'holiday' : ''}`;
-                    shiftItem.innerHTML = `
-                        <span>${shift.shiftType.charAt(0).toUpperCase()}</span>
-                        <span class="shift-remove" onclick="removeShift(${shift.id}, event)">×</span>
-                    `;
-                    shiftEl.appendChild(shiftItem);
+        function saveSettings() {
+            const settings = {
+                defaultHourlyRate: parseFloat(document.getElementById('defaultHourlyRate').value) || 30.00,
+                shiftPremiums: {
+                    nightShift: parseFloat(document.getElementById('nightShiftPremium').value) || 4.00,
+                    eveningShift: parseFloat(document.getElementById('eveningShiftPremium').value) || 2.00,
+                    weekend: parseFloat(document.getElementById('weekendPremium').value) || 2.00,
+                    onCall: parseFloat(document.getElementById('onCallPremium').value) || 3.00
                 }
-            });
+            };
+            
+            payroll.saveSettings(settings);
+            updatePremiumLabels();
+            showAlert('Settings saved successfully!', 'success');
         }
 
-        function removeShift(shiftId, event) {
-            event.stopPropagation();
-            payroll.removeShift(shiftId);
-            updateShiftsDisplay();
-            showAlert('Shift removed', 'success');
+        function updatePremiumLabels() {
+            const premiums = payroll.settings.shiftPremiums;
+            document.querySelector('label[for="nightShiftHours"]').textContent = `Night Shift Hours (+$${premiums.nightShift}/hr)`;
+            document.querySelector('label[for="eveningShiftHours"]').textContent = `Evening Shift Hours (+$${premiums.eveningShift}/hr)`;
+            document.querySelector('label[for="weekendHours"]').textContent = `Weekend Hours (+$${premiums.weekend}/hr)`;
+            document.querySelector('label[for="onCallHours"]').textContent = `On-Call Hours (+$${premiums.onCall}/hr)`;
         }
 
         function addEmployee() {
-            const name = document.getElementById('employeeName').value.trim();
-            const hourlyRate = parseFloat(document.getElementById('hourlyRate').value);
-            const department = document.getElementById('department').value.trim() || 'General';
+            const name = document.getElementById('employeeName').value;
+            let hourlyRate = parseFloat(document.getElementById('hourlyRate').value);
+            const department = document.getElementById('department').value || 'General';
 
-            if (!name || !hourlyRate || hourlyRate <= 0) {
-                showAlert('Please enter valid employee name and hourly rate.', 'error');
+            // Use default hourly rate if none provided
+            if (!hourlyRate || hourlyRate <= 0) {
+                hourlyRate = payroll.settings.defaultHourlyRate;
+                document.getElementById('hourlyRate').value = hourlyRate;
+            }
+
+            if (!name) {
+                showAlert('Please enter a valid employee name.', 'error');
                 return;
             }
 
             const employee = payroll.addEmployee(name, hourlyRate, department);
             showAlert(`Employee ${name} added successfully!`, 'success');
             
+            // Clear form
             document.getElementById('employeeName').value = '';
             document.getElementById('hourlyRate').value = '';
             document.getElementById('department').value = '';
@@ -1004,7 +667,7 @@
             const employeeList = document.getElementById('employeeList');
             
             if (payroll.employees.length === 0) {
-                employeeList.innerHTML = '<div class="alert">No employees found.</div>';
+                employeeList.innerHTML = '<div class="alert">No employees added yet. Add an employee above to get started.</div>';
                 return;
             }
 
@@ -1019,7 +682,6 @@
         function selectEmployee(employeeId) {
             selectedEmployeeId = employeeId;
             updateEmployeeList();
-            updateShiftsDisplay();
         }
 
         function calculatePayroll() {
@@ -1028,27 +690,36 @@
                 return;
             }
 
-            const startDate = payroll.currentWeekStart.toISOString().split('T')[0];
-            const endDate = new Date(payroll.currentWeekStart);
-            endDate.setDate(endDate.getDate() + 13);
-            const endDateStr = endDate.toISOString().split('T')[0];
+            const totalHours = parseFloat(document.getElementById('totalHours').value) || 0;
+            const overtimeHours15 = parseFloat(document.getElementById('overtimeHours15').value) || 0;
+            const overtimeHours20 = parseFloat(document.getElementById('overtimeHours20').value) || 0;
+            const holidayHours15 = parseFloat(document.getElementById('holidayHours15').value) || 0;
+            const holidayHours20 = parseFloat(document.getElementById('holidayHours20').value) || 0;
+            
+            const shiftPremiums = {
+                nightShiftHours: parseFloat(document.getElementById('nightShiftHours').value) || 0,
+                eveningShiftHours: parseFloat(document.getElementById('eveningShiftHours').value) || 0,
+                weekendHours: parseFloat(document.getElementById('weekendHours').value) || 0,
+                onCallHours: parseFloat(document.getElementById('onCallHours').value) || 0
+            };
 
             try {
-                const payrollRecord = payroll.calculatePayroll(selectedEmployeeId, startDate, endDateStr);
+                const payrollRecord = payroll.calculatePayroll(selectedEmployeeId, {
+                    totalHours,
+                    overtimeHours15,
+                    overtimeHours20,
+                    holidayHours15,
+                    holidayHours20,
+                    shiftPremiums,
+                    payPeriodStart: new Date(),
+                    payPeriodEnd: new Date()
+                });
+
                 displayPayStub(payrollRecord);
-                updateSummaryStats(payrollRecord);
                 showAlert('Payroll calculated successfully!', 'success');
             } catch (error) {
                 showAlert(`Error: ${error.message}`, 'error');
             }
-        }
-
-        function updateSummaryStats(payrollRecord) {
-            document.getElementById('summaryStats').style.display = 'grid';
-            document.getElementById('totalHoursStat').textContent = payrollRecord.hours.total.toFixed(1);
-            document.getElementById('overtimeHoursStat').textContent = (payrollRecord.hours.overtimeHours15 + payrollRecord.hours.overtimeHours20).toFixed(1);
-            document.getElementById('weekendHoursStat').textContent = payrollRecord.hours.weekendHours.toFixed(1);
-            document.getElementById('nightHoursStat').textContent = payrollRecord.hours.nightHours.toFixed(1);
         }
 
         function displayPayStub(payrollRecord) {
@@ -1058,36 +729,101 @@
                 <div class="pay-stub">
                     <div class="pay-stub-header">
                         <div class="pay-stub-title">PAYROLL STUB</div>
-                        <div style="margin-top: 8px; font-size: 12px;">
-                            <strong>${payrollRecord.employeeName}</strong><br>
-                            ${payrollRecord.payPeriodStart} to ${payrollRecord.payPeriodEnd}<br>
-                            Rate: ${payroll.formatCurrency(payrollRecord.pay.hourlyRate)}/hr | Shifts: ${payrollRecord.shifts.length}
+                        <div style="margin-top: 10px;">
+                            <strong>${payrollRecord.employeeName}</strong> (ID: ${payrollRecord.employeeId})<br>
+                            Pay Period: ${payrollRecord.payPeriodStart.toLocaleDateString()} - ${payrollRecord.payPeriodEnd.toLocaleDateString()}<br>
+                            Hourly Rate: ${payroll.formatCurrency(payrollRecord.pay.hourlyRate)}
                         </div>
                     </div>
 
                     <div class="pay-stub-section">
-                        <h4>HOURS</h4>
-                        <div class="pay-row"><span>Total:</span><span>${payrollRecord.hours.total.toFixed(1)}</span></div>
-                        <div class="pay-row"><span>Regular:</span><span>${payrollRecord.hours.regular.toFixed(1)}</span></div>
-                        <div class="pay-row"><span>OT (1.5x):</span><span>${payrollRecord.hours.overtimeHours15.toFixed(1)}</span></div>
-                        <div class="pay-row"><span>OT (2.0x):</span><span>${payrollRecord.hours.overtimeHours20.toFixed(1)}</span></div>
-                        <div class="pay-row"><span>Holiday (1.5x):</span><span>${payrollRecord.hours.holidayHours15.toFixed(1)}</span></div>
-                        <div class="pay-row"><span>Holiday (2.0x):</span><span>${payrollRecord.hours.holidayHours20.toFixed(1)}</span></div>
-                        <div class="pay-row"><span>Night:</span><span>${payrollRecord.hours.nightHours.toFixed(1)}</span></div>
-                        <div class="pay-row"><span>Evening:</span><span>${payrollRecord.hours.eveningHours.toFixed(1)}</span></div>
-                        <div class="pay-row"><span>Weekend:</span><span>${payrollRecord.hours.weekendHours.toFixed(1)}</span></div>
+                        <h4>HOURS WORKED</h4>
+                        <div class="pay-row">
+                            <span>Total Hours:</span>
+                            <span>${payrollRecord.hours.total}</span>
+                        </div>
+                        <div class="pay-row">
+                            <span>Regular Hours:</span>
+                            <span>${payrollRecord.hours.regular}</span>
+                        </div>
+                        <div class="pay-row">
+                            <span>Overtime Hours (1.5x):</span>
+                            <span>${payrollRecord.hours.overtimeHours15 || 0}</span>
+                        </div>
+                        <div class="pay-row">
+                            <span>Overtime Hours (2.0x):</span>
+                            <span>${payrollRecord.hours.overtimeHours20 || 0}</span>
+                        </div>
+                        <div class="pay-row">
+                            <span>Holiday Hours (1.5x):</span>
+                            <span>${payrollRecord.hours.holidayHours15 || 0}</span>
+                        </div>
+                        <div class="pay-row">
+                            <span>Holiday Hours (2.0x):</span>
+                            <span>${payrollRecord.hours.holidayHours20 || 0}</span>
+                        </div>
+                        <div class="premium-breakdown">
+                            <div class="premium-title">Premium Hours Breakdown:</div>
+                            <div class="premium-row">
+                                <span>Night Shift:</span>
+                                <span>${payrollRecord.hours.shiftPremiums.nightShiftHours || 0} hrs</span>
+                            </div>
+                            <div class="premium-row">
+                                <span>Evening Shift:</span>
+                                <span>${payrollRecord.hours.shiftPremiums.eveningShiftHours || 0} hrs</span>
+                            </div>
+                            <div class="premium-row">
+                                <span>Weekend:</span>
+                                <span>${payrollRecord.hours.shiftPremiums.weekendHours || 0} hrs</span>
+                            </div>
+                            <div class="premium-row">
+                                <span>On-Call:</span>
+                                <span>${payrollRecord.hours.shiftPremiums.onCallHours || 0} hrs</span>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="pay-stub-section">
                         <h4>EARNINGS</h4>
-                        <div class="pay-row"><span>Regular Pay:</span><span>${payroll.formatCurrency(payrollRecord.pay.regular)}</span></div>
-                        <div class="pay-row"><span>OT Pay (1.5x):</span><span>${payroll.formatCurrency(payrollRecord.pay.overtime15)}</span></div>
-                        <div class="pay-row"><span>OT Pay (2.0x):</span><span>${payroll.formatCurrency(payrollRecord.pay.overtime20)}</span></div>
-                        <div class="pay-row"><span>Holiday (1.5x):</span><span>${payroll.formatCurrency(payrollRecord.pay.holiday15)}</span></div>
-                        <div class="pay-row"><span>Holiday (2.0x):</span><span>${payroll.formatCurrency(payrollRecord.pay.holiday20)}</span></div>
-                        <div class="pay-row"><span>Night Premium:</span><span>${payroll.formatCurrency(payrollRecord.pay.nightPremium)}</span></div>
-                        <div class="pay-row"><span>Evening Premium:</span><span>${payroll.formatCurrency(payrollRecord.pay.eveningPremium)}</span></div>
-                        <div class="pay-row"><span>Weekend Premium:</span><span>${payroll.formatCurrency(payrollRecord.pay.weekendPremium)}</span></div>
+                        <div class="pay-row">
+                            <span>Regular Pay:</span>
+                            <span>${payroll.formatCurrency(payrollRecord.pay.regular)}</span>
+                        </div>
+                        <div class="pay-row">
+                            <span>Overtime Pay (1.5x):</span>
+                            <span>${payroll.formatCurrency(payrollRecord.pay.overtime.overtime15)}</span>
+                        </div>
+                        <div class="pay-row">
+                            <span>Overtime Pay (2.0x):</span>
+                            <span>${payroll.formatCurrency(payrollRecord.pay.overtime.overtime20)}</span>
+                        </div>
+                        <div class="pay-row">
+                            <span>Holiday Pay (1.5x):</span>
+                            <span>${payroll.formatCurrency(payrollRecord.pay.holiday.holiday15)}</span>
+                        </div>
+                        <div class="pay-row">
+                            <span>Holiday Pay (2.0x):</span>
+                            <span>${payroll.formatCurrency(payrollRecord.pay.holiday.holiday20)}</span>
+                        </div>
+                        <div class="premium-breakdown">
+                            <div class="premium-title">Shift Premiums:</div>
+                            <div class="premium-row">
+                                <span>Night Shift (+$${payroll.settings.shiftPremiums.nightShift}/hr):</span>
+                                <span>${payroll.formatCurrency(payrollRecord.pay.shiftPremiums.nightShift)}</span>
+                            </div>
+                            <div class="premium-row">
+                                <span>Evening Shift (+$${payroll.settings.shiftPremiums.eveningShift}/hr):</span>
+                                <span>${payroll.formatCurrency(payrollRecord.pay.shiftPremiums.eveningShift)}</span>
+                            </div>
+                            <div class="premium-row">
+                                <span>Weekend (+$${payroll.settings.shiftPremiums.weekend}/hr):</span>
+                                <span>${payroll.formatCurrency(payrollRecord.pay.shiftPremiums.weekend)}</span>
+                            </div>
+                            <div class="premium-row">
+                                <span>On-Call (+$${payroll.settings.shiftPremiums.onCall}/hr):</span>
+                                <span>${payroll.formatCurrency(payrollRecord.pay.shiftPremiums.onCall)}</span>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="pay-row gross-pay">
@@ -1099,9 +835,11 @@
         }
 
         function showAlert(message, type = 'info') {
+            // Remove existing alerts
             const existingAlerts = document.querySelectorAll('.temp-alert');
             existingAlerts.forEach(alert => alert.remove());
 
+            // Create new alert
             const alertDiv = document.createElement('div');
             alertDiv.className = `alert ${type} temp-alert`;
             alertDiv.textContent = message;
@@ -1113,14 +851,15 @@
 
             document.body.appendChild(alertDiv);
 
+            // Remove alert after 3 seconds
             setTimeout(() => {
                 alertDiv.remove();
             }, 3000);
         }
 
-        // Initialize
+        // Initialize the employee list on page load
         updateEmployeeList();
-        generateCalendar();
+        updatePremiumLabels();
     </script>
 </body>
 </html>
