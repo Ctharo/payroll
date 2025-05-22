@@ -268,6 +268,13 @@
             font-weight: 600;
         }
 
+        .validation-note {
+            font-size: 0.9em;
+            color: #7f8c8d;
+            margin-top: 5px;
+            font-style: italic;
+        }
+
         @media (max-width: 768px) {
             .main-content {
                 flex-direction: column;
@@ -300,17 +307,17 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="employeeName">Name</label>
-                            <input type="text" id="employeeName" placeholder="John Smith">
+                            <input type="text" id="employeeName" placeholder="Enter employee name">
                         </div>
                         <div class="form-group">
                             <label for="hourlyRate">Hourly Rate ($)</label>
-                            <input type="number" id="hourlyRate" step="0.01" placeholder="25.00">
+                            <input type="number" id="hourlyRate" step="0.01" placeholder="0.00">
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
                             <label for="department">Department</label>
-                            <input type="text" id="department" placeholder="Engineering">
+                            <input type="text" id="department" placeholder="Enter department">
                         </div>
                         <div class="form-group">
                             <button class="btn btn-secondary" onclick="addEmployee()">Add Employee</button>
@@ -332,7 +339,8 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="totalHours">Total Hours Worked</label>
-                            <input type="number" id="totalHours" step="0.5" placeholder="80">
+                            <input type="number" id="totalHours" step="0.5" placeholder="0" min="0">
+                            <div class="validation-note">Enter the total hours worked in this pay period</div>
                         </div>
                     </div>
                     
@@ -340,11 +348,11 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="overtimeHours15">OT Hours (1.5x rate)</label>
-                            <input type="number" id="overtimeHours15" step="0.5" placeholder="8" title="First 8 hours of overtime at 1.5x rate">
+                            <input type="number" id="overtimeHours15" step="0.5" placeholder="0" min="0" title="First 8 hours of overtime at 1.5x rate">
                         </div>
                         <div class="form-group">
                             <label for="overtimeHours20">OT Hours (2.0x rate)</label>
-                            <input type="number" id="overtimeHours20" step="0.5" placeholder="0" title="Hours beyond 8 OT hours at 2.0x rate">
+                            <input type="number" id="overtimeHours20" step="0.5" placeholder="0" min="0" title="Hours beyond 8 OT hours at 2.0x rate">
                         </div>
                     </div>
                     
@@ -352,11 +360,11 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="holidayHours15">Regular Holiday (1.5x)</label>
-                            <input type="number" id="holidayHours15" step="0.5" placeholder="0" title="Standard stat holidays at 1.5x rate">
+                            <input type="number" id="holidayHours15" step="0.5" placeholder="0" min="0" title="Standard stat holidays at 1.5x rate">
                         </div>
                         <div class="form-group">
                             <label for="holidayHours20">Premium Holiday (2.0x)</label>
-                            <input type="number" id="holidayHours20" step="0.5" placeholder="7.5" title="Christmas, New Year's at 2.0x rate">
+                            <input type="number" id="holidayHours20" step="0.5" placeholder="0" min="0" title="Christmas, New Year's at 2.0x rate">
                         </div>
                     </div>
                     
@@ -364,22 +372,25 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="nightShiftHours">Night Shift Hours (+$4/hr)</label>
-                            <input type="number" id="nightShiftHours" step="0.5" placeholder="16">
+                            <input type="number" id="nightShiftHours" step="0.5" placeholder="0" min="0">
                         </div>
                         <div class="form-group">
                             <label for="eveningShiftHours">Evening Shift Hours (+$2/hr)</label>
-                            <input type="number" id="eveningShiftHours" step="0.5" placeholder="7.5">
+                            <input type="number" id="eveningShiftHours" step="0.5" placeholder="0" min="0">
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
                             <label for="weekendHours">Weekend Hours (+$2/hr)</label>
-                            <input type="number" id="weekendHours" step="0.5" placeholder="30">
+                            <input type="number" id="weekendHours" step="0.5" placeholder="0" min="0">
                         </div>
                         <div class="form-group">
                             <label for="onCallHours">On-Call Hours (+$3/hr)</label>
-                            <input type="number" id="onCallHours" step="0.5" placeholder="0">
+                            <input type="number" id="onCallHours" step="0.5" placeholder="0" min="0">
                         </div>
+                    </div>
+                    <div class="validation-note">
+                        Note: Premium hours should be included in your total hours count above
                     </div>
                 </div>
 
@@ -481,10 +492,17 @@
                     payPeriodEnd
                 } = payPeriodData;
 
-                // Calculate regular hours (total - overtime - holiday)
+                // Validation: Check if total hours makes sense
                 const totalOvertimeHours = overtimeHours15 + overtimeHours20;
                 const totalHolidayHours = holidayHours15 + holidayHours20;
-                const regularHours = Math.max(0, totalHours - totalOvertimeHours - totalHolidayHours);
+                const specialHours = totalOvertimeHours + totalHolidayHours;
+                
+                if (specialHours > totalHours) {
+                    throw new Error(`Total overtime and holiday hours (${specialHours}) cannot exceed total hours worked (${totalHours})`);
+                }
+
+                // Calculate regular hours (total - overtime - holiday)
+                const regularHours = Math.max(0, totalHours - specialHours);
 
                 // Calculate different types of pay
                 const regularPay = this.calculateRegularPay(regularHours, employee.hourlyRate);
@@ -543,9 +561,9 @@
         payroll.addEmployee('Lizzie Westerly', 28.00, 'Care Aide');
 
         function addEmployee() {
-            const name = document.getElementById('employeeName').value;
+            const name = document.getElementById('employeeName').value.trim();
             const hourlyRate = parseFloat(document.getElementById('hourlyRate').value);
-            const department = document.getElementById('department').value || 'General';
+            const department = document.getElementById('department').value.trim() || 'General';
 
             if (!name || !hourlyRate || hourlyRate <= 0) {
                 showAlert('Please enter valid employee name and hourly rate.', 'error');
@@ -590,6 +608,7 @@
                 return;
             }
 
+            // Get values from form inputs
             const totalHours = parseFloat(document.getElementById('totalHours').value) || 0;
             const overtimeHours15 = parseFloat(document.getElementById('overtimeHours15').value) || 0;
             const overtimeHours20 = parseFloat(document.getElementById('overtimeHours20').value) || 0;
@@ -602,6 +621,12 @@
                 weekendHours: parseFloat(document.getElementById('weekendHours').value) || 0,
                 onCallHours: parseFloat(document.getElementById('onCallHours').value) || 0
             };
+
+            // Basic validation
+            if (totalHours <= 0) {
+                showAlert('Please enter total hours worked (must be greater than 0).', 'error');
+                return;
+            }
 
             try {
                 const payrollRecord = payroll.calculatePayroll(selectedEmployeeId, {
