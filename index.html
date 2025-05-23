@@ -172,14 +172,13 @@
             aspect-ratio: 1;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
             border: 2px solid #e0e0e0;
             border-radius: 8px;
             cursor: pointer;
             transition: all 0.2s ease;
             position: relative;
-            min-height: 80px;
+            min-height: 120px;
+            padding: 5px;
         }
 
         .calendar-day:hover {
@@ -202,21 +201,103 @@
         .day-number {
             font-size: 12px;
             color: #666;
-            position: absolute;
-            top: 5px;
-            left: 8px;
-        }
-
-        .shift-type {
             font-weight: bold;
-            font-size: 14px;
-            margin-top: 5px;
+            margin-bottom: 5px;
         }
 
-        .shift-type.day { color: #e67e22; }
-        .shift-type.evening { color: #8e44ad; }
-        .shift-type.night { color: #2c3e50; }
-        .shift-type.off { color: #7f8c8d; }
+        .shifts-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            position: relative;
+        }
+
+        .shift-item {
+            background: #f8f9fa;
+            border-radius: 4px;
+            padding: 3px 6px;
+            font-size: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .shift-item:hover {
+            transform: scale(1.05);
+            border-color: #3498db;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .shift-item.day {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            color: white;
+        }
+
+        .shift-item.evening {
+            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+            color: white;
+        }
+
+        .shift-item.night {
+            background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+            color: white;
+        }
+
+        .shift-item.off {
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+            color: white;
+        }
+
+        .shift-label {
+            font-weight: bold;
+            font-size: 9px;
+        }
+
+        .shift-hours {
+            font-size: 8px;
+            opacity: 0.9;
+        }
+
+        .empty-day {
+            color: #bbb;
+            font-size: 10px;
+            text-align: center;
+            padding: 10px 0;
+            font-style: italic;
+        }
+
+        .plus-button {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 18px;
+            height: 18px;
+            background: #27ae60;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            opacity: 0.7;
+        }
+
+        .plus-button:hover {
+            opacity: 1;
+            transform: scale(1.1);
+            box-shadow: 0 2px 6px rgba(39, 174, 96, 0.4);
+        }
+
+        .calendar-day:hover .plus-button {
+            opacity: 1;
+        }
 
         /* Settings Modal */
         .settings-modal {
@@ -428,7 +509,7 @@
     <div class="container">
         <div class="header">
             <h1>📅 Shift Schedule Payroll Calculator</h1>
-            <p>Click shift buttons to fill your 2-week schedule</p>
+            <p>Click shift buttons to add to current day, or use + button for multiple shifts and custom hours</p>
             <button class="settings-btn" onclick="toggleSettings()">⚙️ Settings</button>
         </div>
 
@@ -457,7 +538,7 @@
                 <h2 class="section-title">Payroll Summary</h2>
                 <div id="results">
                     <div class="alert">
-                        Build your 2-week schedule by clicking the shift buttons above.
+                        Build your 2-week schedule by clicking shift buttons or using the + button for multiple shifts per day.
                     </div>
                 </div>
             </div>
@@ -566,11 +647,49 @@
         </div>
     </div>
 
+    <!-- Shift Edit Modal -->
+    <div id="shiftModal" class="settings-modal">
+        <div class="settings-content">
+            <div class="settings-header">
+                <h2 id="shiftModalTitle">Add Shift</h2>
+                <button class="close-btn" onclick="toggleShiftModal()">×</button>
+            </div>
+
+            <div class="form-group">
+                <label for="shiftType">Shift Type</label>
+                <select id="shiftType">
+                    <option value="day">☀️ Day Shift</option>
+                    <option value="evening">🌅 Evening Shift</option>
+                    <option value="night">🌙 Night Shift</option>
+                    <option value="off">😴 Day Off</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="shiftHours">Hours</label>
+                <input type="number" id="shiftHours" step="0.25" min="0" max="24" value="8">
+            </div>
+
+            <div class="form-group">
+                <label for="shiftNote">Note (optional)</label>
+                <input type="text" id="shiftNote" placeholder="e.g., Training, Meeting, etc.">
+            </div>
+
+            <div style="display: flex; gap: 15px;">
+                <button class="btn btn-secondary" onclick="toggleShiftModal()">Cancel</button>
+                <button class="btn" onclick="saveShift()">Save Shift</button>
+                <button id="deleteShiftBtn" class="btn" style="background: #e74c3c;" onclick="deleteShift()" style="display: none;">Delete</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         class ShiftScheduler {
             constructor() {
-                this.schedule = new Array(14).fill(null);
+                this.schedule = new Array(14).fill(null).map(() => []);
                 this.currentDay = 0;
+                this.editingDay = -1;
+                this.editingShiftIndex = -1;
                 this.settings = {
                     startDate: new Date(),
                     startDay: 1, // Monday
@@ -676,17 +795,46 @@
                     const dayNumber = document.createElement('div');
                     dayNumber.className = 'day-number';
                     dayNumber.textContent = currentDate.getDate();
-                    
-                    const shiftType = document.createElement('div');
-                    shiftType.className = 'shift-type';
-                    
-                    if (this.schedule[i]) {
-                        shiftType.textContent = this.getShiftDisplay(this.schedule[i]);
-                        shiftType.classList.add(this.schedule[i]);
-                    }
-                    
                     dayElement.appendChild(dayNumber);
-                    dayElement.appendChild(shiftType);
+
+                    // Container for shifts
+                    const shiftsContainer = document.createElement('div');
+                    shiftsContainer.className = 'shifts-container';
+                    
+                    // Render existing shifts
+                    if (this.schedule[i] && this.schedule[i].length > 0) {
+                        this.schedule[i].forEach((shift, shiftIndex) => {
+                            const shiftElement = document.createElement('div');
+                            shiftElement.className = `shift-item ${shift.type}`;
+                            shiftElement.innerHTML = `
+                                <span class="shift-label">${this.getShiftDisplay(shift.type)}</span>
+                                <span class="shift-hours">${shift.hours}h</span>
+                            `;
+                            shiftElement.onclick = (e) => {
+                                e.stopPropagation();
+                                this.editShift(i, shiftIndex);
+                            };
+                            shiftsContainer.appendChild(shiftElement);
+                        });
+                    } else {
+                        // Empty day placeholder
+                        const emptyElement = document.createElement('div');
+                        emptyElement.className = 'empty-day';
+                        emptyElement.textContent = 'No shifts';
+                        shiftsContainer.appendChild(emptyElement);
+                    }
+
+                    // Add plus button
+                    const plusButton = document.createElement('div');
+                    plusButton.className = 'plus-button';
+                    plusButton.innerHTML = '+';
+                    plusButton.onclick = (e) => {
+                        e.stopPropagation();
+                        this.addShiftToDay(i);
+                    };
+                    shiftsContainer.appendChild(plusButton);
+                    
+                    dayElement.appendChild(shiftsContainer);
                     dayElement.onclick = () => this.selectDay(i);
                     
                     grid.appendChild(dayElement);
@@ -705,7 +853,12 @@
 
             addShift(type) {
                 if (this.currentDay < 14) {
-                    this.schedule[this.currentDay] = type;
+                    const hours = this.settings.shiftHours[type] || 0;
+                    this.schedule[this.currentDay].push({
+                        type: type,
+                        hours: hours,
+                        note: ''
+                    });
                     this.currentDay++;
                     if (this.currentDay >= 14) {
                         this.currentDay = 0; // Reset to beginning
@@ -714,13 +867,41 @@
                 }
             }
 
+            addShiftToDay(dayIndex) {
+                this.editingDay = dayIndex;
+                this.editingShiftIndex = -1; // -1 means new shift
+                
+                document.getElementById('shiftModalTitle').textContent = `Add Shift - Day ${dayIndex + 1}`;
+                document.getElementById('shiftType').value = 'day';
+                document.getElementById('shiftHours').value = this.settings.shiftHours.day;
+                document.getElementById('shiftNote').value = '';
+                document.getElementById('deleteShiftBtn').style.display = 'none';
+                
+                toggleShiftModal();
+            }
+
+            editShift(dayIndex, shiftIndex) {
+                this.editingDay = dayIndex;
+                this.editingShiftIndex = shiftIndex;
+                
+                const shift = this.schedule[dayIndex][shiftIndex];
+                
+                document.getElementById('shiftModalTitle').textContent = `Edit Shift - Day ${dayIndex + 1}`;
+                document.getElementById('shiftType').value = shift.type;
+                document.getElementById('shiftHours').value = shift.hours;
+                document.getElementById('shiftNote').value = shift.note || '';
+                document.getElementById('deleteShiftBtn').style.display = 'inline-block';
+                
+                toggleShiftModal();
+            }
+
             selectDay(day) {
                 this.currentDay = day;
                 this.initCalendar();
             }
 
             clearSchedule() {
-                this.schedule = new Array(14).fill(null);
+                this.schedule = new Array(14).fill(null).map(() => []);
                 this.currentDay = 0;
                 this.initCalendar();
             }
@@ -736,25 +917,27 @@
                 // Calculate hours by shift type
                 const weeklyHours = [0, 0]; // Track hours for each week
                 
-                this.schedule.forEach((shift, index) => {
-                    if (shift && shift !== 'off') {
-                        const hours = this.settings.shiftHours[shift];
-                        const week = Math.floor(index / 7);
-                        weeklyHours[week] += hours;
-                        
-                        // Check if weekend (Saturday = 6, Sunday = 0)
-                        const dayOfWeek = (this.settings.startDay + index) % 7;
-                        if (dayOfWeek === 0 || dayOfWeek === 6) {
-                            weekendHours += hours;
+                this.schedule.forEach((dayShifts, dayIndex) => {
+                    dayShifts.forEach((shift) => {
+                        if (shift.type !== 'off') {
+                            const hours = shift.hours;
+                            const week = Math.floor(dayIndex / 7);
+                            weeklyHours[week] += hours;
+                            
+                            // Check if weekend (Saturday = 6, Sunday = 0)
+                            const dayOfWeek = (this.settings.startDay + dayIndex) % 7;
+                            if (dayOfWeek === 0 || dayOfWeek === 6) {
+                                weekendHours += hours;
+                            }
+                            
+                            // Track shift types
+                            if (shift.type === 'night') {
+                                nightHours += hours;
+                            } else if (shift.type === 'evening') {
+                                eveningHours += hours;
+                            }
                         }
-                        
-                        // Track shift types
-                        if (shift === 'night') {
-                            nightHours += hours;
-                        } else if (shift === 'evening') {
-                            eveningHours += hours;
-                        }
-                    }
+                    });
                 });
                 
                 // Calculate overtime for each week
@@ -820,6 +1003,50 @@
             modal.classList.toggle('active');
         }
 
+        function toggleShiftModal() {
+            const modal = document.getElementById('shiftModal');
+            modal.classList.toggle('active');
+        }
+
+        function saveShift() {
+            const type = document.getElementById('shiftType').value;
+            const hours = parseFloat(document.getElementById('shiftHours').value);
+            const note = document.getElementById('shiftNote').value;
+
+            if (hours < 0 || hours > 24) {
+                showAlert('Hours must be between 0 and 24!', 'error');
+                return;
+            }
+
+            const shift = {
+                type: type,
+                hours: hours,
+                note: note
+            };
+
+            if (scheduler.editingShiftIndex === -1) {
+                // Adding new shift
+                scheduler.schedule[scheduler.editingDay].push(shift);
+                showAlert('Shift added successfully!', 'success');
+            } else {
+                // Editing existing shift
+                scheduler.schedule[scheduler.editingDay][scheduler.editingShiftIndex] = shift;
+                showAlert('Shift updated successfully!', 'success');
+            }
+
+            scheduler.initCalendar();
+            toggleShiftModal();
+        }
+
+        function deleteShift() {
+            if (scheduler.editingShiftIndex !== -1) {
+                scheduler.schedule[scheduler.editingDay].splice(scheduler.editingShiftIndex, 1);
+                scheduler.initCalendar();
+                toggleShiftModal();
+                showAlert('Shift deleted successfully!', 'success');
+            }
+        }
+
         function saveSettings() {
             const settings = {
                 startDate: document.getElementById('startDate').value,
@@ -856,7 +1083,7 @@
             scheduler.clearSchedule();
             document.getElementById('results').innerHTML = `
                 <div class="alert">
-                    Build your 2-week schedule by clicking the shift buttons above.
+                    Build your 2-week schedule by clicking shift buttons or using the + button for multiple shifts per day.
                 </div>
             `;
             showAlert('Schedule cleared!', 'success');
@@ -865,8 +1092,16 @@
         function calculatePayroll() {
             const result = scheduler.calculatePayroll();
             
-            if (result.hours.total === 0) {
+            // Check if there are any shifts scheduled
+            const hasShifts = scheduler.schedule.some(dayShifts => dayShifts.length > 0);
+            
+            if (!hasShifts) {
                 showAlert('Please add some shifts to your schedule first!', 'error');
+                return;
+            }
+            
+            if (result.hours.total === 0) {
+                showAlert('No working hours found in your schedule!', 'error');
                 return;
             }
             
@@ -976,6 +1211,15 @@
 
         // Set default start date to today
         document.getElementById('startDate').value = new Date().toISOString().split('T')[0];
+
+        // Auto-update hours when shift type changes
+        document.getElementById('shiftType').addEventListener('change', function() {
+            const type = this.value;
+            const hoursInput = document.getElementById('shiftHours');
+            if (scheduler && scheduler.settings && scheduler.settings.shiftHours[type] !== undefined) {
+                hoursInput.value = scheduler.settings.shiftHours[type];
+            }
+        });
     </script>
 </body>
 </html>
