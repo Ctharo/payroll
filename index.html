@@ -1,1444 +1,1777 @@
-<!DOCTYPE html>
+calculatePayroll() {
+    let totalHours = 0;
+    let regularHours = 0;
+    let ot1Hours = 0; // 1.5x overtime
+    let ot2Hours = 0; // 2.0x overtime
+    let nightHours = 0;
+    let eveningHours = 0;
+    let weekendHours = 0;
+    
+    const overtimeRules = this.settings.overtimeRules;
+    const weeklyHours = [0, 0]; // Track hours for each week
+    const dailyOvertimeHours = []; // Track daily overtime for weekly calculation
+    
+    // Calculate total current period hours
+    let currentPeriodHours = 0;
+    this.schedule.forEach((dayShifts) => {
+        dayShifts.forEach((shift) => {
+            if (shift.type !== 'off') {
+                currentPeriodHours += shift.hours;
+            }
+        });
+    });
+    
+    // For part-time/casual: check 6-week rotation rule (240 hours over 3 pay periods)
+    let usePartTimeOT = false;
+    if (this.settings.employmentStatus === 'part-time' || this.settings.employmentStatus === 'casual') {
+        const totalSixWeekHours = this.settings.previousPeriod1Hours + 
+                                this.settings.previousPeriod2Hours + 
+                                currentPeriodHours;
+        
+        if (totalSixWeekHours > 240) { // 30 full shifts × 8 hours
+            usePartTimeOT = true;
+            // Calculate how many hours exceed 240
+            const excessHours = totalSixWeekHours - 240;
+            // Apply this excess as overtime to current period
+            const currentPeriodExcess = Math.min(excessHours, currentPeriodHours);
+            // This will be handled in the overtime calculation below
+        }
+    }
+    
+    // First pass: Calculate daily hours and daily overtime
+    this.schedule.forEach((dayShifts, dayIndex) => {
+        let dailyTotal = 0;
+        let dailyRegular = 0;
+        let dailyOt1 = 0;
+        let dailyOt2 = 0;
+        
+        dayShifts.forEach((shift) => {
+            if (shift.type !== 'off') {
+                const hours = shift.hours;
+                dailyTotal += hours;
+                
+                // Check if weekend for premium calculation
+                const dayOfWeek = (this.settings.startDay + dayIndex) % 7;
+                if (dayOfWeek === 0 || dayOfWeek === 6) {
+                    weekendHours += hours;
+                }
+                
+                // Track shift types for premiums
+                if (shift.type === 'night') {
+                    nightHours += hours;
+                } else if (shift.type === 'evening') {
+                    eveningHours += hours;
+                }
+            }
+        });
+        
+        // Apply daily overtime rules per collective agreement
+        if (dailyTotal > overtimeRules.dailyOt2Threshold) {
+            // Hours over 12 are OT2 (2.0x)
+            dailyOt2 = dailyTotal - overtimeRules.dailyOt2Threshold;
+            dailyOt1 = Math.min(4, overtimeRules.dailyOt2Threshold - overtimeRules.dailyOt1Threshold);
+            dailyRegular = overtimeRules.dailyOt1Threshold;
+        } else if (dailyTotal > overtimeRules.dailyOt1Threshold) {
+            // Hours over 8 (up to 12) are OT1 (1.5x), max 4 hours
+            dailyOt1 = Math.min(4, dailyTotal - overtimeRules.dailyOt1Threshold);
+            dailyRegular = Math.min(dailyTotal, overtimeRules.dailyOt1Threshold);
+        } else {
+            // All hours are regular
+            dailyRegular = dailyTotal;
+        }
+        
+        // Apply minimum overtime rule (15 minutes)
+        const minOtHours = overtimeRules.minOvertimeMinutes / 60;
+        if (dailyOt1 > 0 && dailyOt1 < minOtHours) {
+            dailyRegular += dailyOt1;
+            dailyOt1 = 0;
+        }
+        if (dailyOt2 > 0 && dailyOt2 < minOtHours) {
+            dailyOt1 += dailyOt2;
+            dailyOt2 = 0;
+        }
+        
+        // Track weekly totals
+        const week = Math.floor(dayIndex / 7);
+        weeklyHours[week] += dailyTotal;
+        
+        // Accumulate totals
+        regularHours += dailyRegular;
+        ot1Hours += dailyOt1;
+        ot2Hours += dailyOt2;
+        
+        dailyOvertimeHours.push({
+            regular: dailyRegular,
+            ot1: dailyOt1,
+            ot2: dailyOt2,
+            total: dailyTotal
+        });
+    });
+    
+    // Handle weekly overtime for full-time employees
+    if (this.settings.employmentStatus === 'full-time' && overtimeRules.weeklyOtCalculation === 'collective') {
+        // Per collective agreement: weekly OT is calculated AFTER daily OT is accounted for
+        weeklyHours.forEach((weekTotal, weekIndex) => {
+            if (weekTotal > overtimeRules.normalWeeklyHours) {
+                // Calculate how much weekly overtime we have beyond daily OT
+                let weeklyRegularUsed = 0;
+                
+                // Sum up the daily regular hours for this week
+                for (let day = 0; day < 7; day++) {
+                    const dayIndex = weekIndex * 7 + day;
+                    if (dayIndex < dailyOvertimeHours.length) {
+                        weeklyRegularUsed += dailyOvertimeHours[dayIndex].regular;
+                    }
+                }
+                
+                // If we have regular hours that push us over 40, convert them to OT1
+                if (weeklyRegularUsed > overtimeRules.normalWeeklyHours) {
+                    const excessRegular = weeklyRegularUsed - overtimeRules.normalWeeklyHours;
+                    regularHours -= excessRegular;
+                    ot1Hours += excessRegular;
+                }
+            }
+        });
+    }
+    
+    totalHours = regularHours + ot1Hours + ot2Hours;
+    
+    // Calculate pay
+    const hourlyRate = this.settings.hourlyWage;
+    const regularPay = regularHours * hourlyRate;
+    const ot1Pay = ot1Hours * hourlyRate * overtimeRules.ot1Rate;
+    const ot2Pay = ot2Hours * hourlyRate * overtimeRules.ot2Rate;
+    
+    // Calculate premiums
+    const nightPremium = nightHours * this.settings.shiftPremiums.night;
+    const eveningPremium = eveningHours * this.settings.shiftPremiums.evening;
+    const weekendPremium = weekendHours * this.settings.shiftPremiums.weekend;
+    
+    const totalPremiums = nightPremium + eveningPremium + weekendPremium;
+    const grossPay = regularPay + ot1Pay + ot2Pay + totalPremiums;
+    
+    return {
+        hours: {
+            total: totalHours,
+            regular: regularHours,
+            ot1: ot1Hours,
+            ot2: ot2Hours,
+            night: nightHours,
+            evening: eveningHours,
+            weekend: weekendHours
+        },
+        pay: {
+            hourlyRate: hourlyRate,
+            regular: regularPay,
+            ot1: ot1Pay,
+            ot2: ot2Pay,
+            nightPremium: nightPremium,
+            eveningPremium: eveningPremium,
+            weekendPremium: weekendPremium,
+            totalPremiums: totalPremiums,
+            gross: grossPay
+        },
+        partTimeInfo: usePartTimeOT ? {
+            sixWeekTotal: this.settings.previousPeriod1Hours + this.settings.previousPeriod2Hours + currentPeriodHours,
+            threshold: 240
+        } : null
+    };
+}<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shift Schedule Payroll Calculator</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-            position: relative;
-        }
-
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-
-        .header p {
-            font-size: 1.1em;
-            opacity: 0.9;
-        }
-
-        .settings-btn {
-            position: absolute;
-            top: 30px;
-            right: 30px;
-            background: rgba(255, 255, 255, 0.2);
-            border: 2px solid white;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: all 0.3s ease;
-        }
-
-        .settings-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-        }
-
-        .main-content {
-            display: flex;
-            flex-wrap: wrap;
-            min-height: 600px;
-        }
-
-        .calendar-section {
-            flex: 2;
-            min-width: 700px;
-            padding: 30px;
-            background: #f8f9fa;
-        }
-
-        .results-section {
-            flex: 1;
-            min-width: 400px;
-            padding: 30px;
-            background: white;
-        }
-
-        .section-title {
-            font-size: 1.5em;
-            color: #2c3e50;
-            margin-bottom: 20px;
-            border-bottom: 3px solid #3498db;
-            padding-bottom: 10px;
-        }
-
-        /* Calendar Styles */
-        .shift-buttons {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 30px;
-            justify-content: center;
-        }
-
-        .shift-btn {
-            padding: 20px 30px;
-            border: none;
-            border-radius: 12px;
-            font-size: 18px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            animation: pulse 2s infinite;
-            color: white;
-            min-width: 120px;
-        }
-
-        @keyframes pulse {
-            0% {
-                transform: scale(1);
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            }
-            50% {
-                transform: scale(1.05);
-                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-            }
-            100% {
-                transform: scale(1);
-                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            }
-        }
-
-        .shift-btn:hover {
-            animation: none;
-            transform: scale(1.1);
-        }
-
-        .shift-btn.day {
-            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
-        }
-
-        .shift-btn.evening {
-            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
-        }
-
-        .shift-btn.night {
-            background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
-        }
-
-        .shift-btn.off {
-            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
-        }
-
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 5px;
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .calendar-header {
-            font-weight: bold;
-            text-align: center;
-            padding: 10px;
-            background: #e3f2fd;
-            border-radius: 8px;
-            color: #2c3e50;
-        }
-
-        .calendar-day {
-            aspect-ratio: 1;
-            display: flex;
-            flex-direction: column;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            position: relative;
-            min-height: 120px;
-            padding: 5px;
-        }
-
-        .calendar-day:hover {
-            border-color: #3498db;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(52, 152, 219, 0.2);
-        }
-
-        .calendar-day.current {
-            border-color: #e74c3c;
-            background: #ffebee;
-            animation: blink 1s infinite;
-        }
-
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-
-        .day-number {
-            font-size: 12px;
-            color: #666;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        .shifts-container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            position: relative;
-        }
-
-        .shift-item {
-            background: #f8f9fa;
-            border-radius: 4px;
-            padding: 3px 6px;
-            font-size: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            border: 1px solid transparent;
-        }
-
-        .shift-item:hover {
-            transform: scale(1.05);
-            border-color: #3498db;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .shift-item.day {
-            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
-            color: white;
-        }
-
-        .shift-item.evening {
-            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
-            color: white;
-        }
-
-        .shift-item.night {
-            background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
-            color: white;
-        }
-
-        .shift-item.off {
-            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
-            color: white;
-        }
-
-        .shift-label {
-            font-weight: bold;
-            font-size: 9px;
-        }
-
-        .shift-hours {
-            font-size: 8px;
-            opacity: 0.9;
-        }
-
-        .empty-day {
-            color: #bbb;
-            font-size: 10px;
-            text-align: center;
-            padding: 10px 0;
-            font-style: italic;
-        }
-
-        .plus-button {
-            position: absolute;
-            bottom: 2px;
-            right: 2px;
-            width: 18px;
-            height: 18px;
-            background: #27ae60;
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            opacity: 0;
-            transform: scale(0.8);
-        }
-
-        .plus-button:hover {
-            opacity: 1;
-            transform: scale(1.1);
-            box-shadow: 0 2px 6px rgba(39, 174, 96, 0.4);
-        }
-
-        .calendar-day:hover .plus-button {
-            opacity: 1;
-            transform: scale(1);
-        }
-
-        /* Settings Modal */
-        .settings-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .settings-modal.active {
-            display: flex;
-        }
-
-        .settings-content {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            max-width: 600px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-
-        .settings-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .close-btn {
-            background: #e74c3c;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            cursor: pointer;
-            font-size: 20px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-row {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-
-        .form-row .form-group {
-            flex: 1;
-            margin-bottom: 0;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 600;
-            color: #34495e;
-        }
-
-        input, select {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 16px;
-            transition: border-color 0.3s ease;
-        }
-
-        input:focus, select:focus {
-            outline: none;
-            border-color: #3498db;
-            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
-        }
-
-        .btn {
-            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
-            color: white;
-            padding: 15px 30px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            width: 100%;
-            margin-top: 10px;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
-        }
-
-        .btn-secondary {
-            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
-        }
-
-        .pay-stub {
-            background: #f8f9fa;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            padding: 20px;
-            margin-top: 20px;
-            font-family: 'Courier New', monospace;
-            font-size: 14px;
-        }
-
-        .pay-stub-header {
-            text-align: center;
-            border-bottom: 2px solid #34495e;
-            padding-bottom: 15px;
-            margin-bottom: 15px;
-        }
-
-        .pay-stub-title {
-            font-size: 1.3em;
-            font-weight: bold;
-            color: #2c3e50;
-        }
-
-        .pay-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 5px;
-            padding: 2px 0;
-        }
-
-        .pay-row.total {
-            font-weight: bold;
-            border-top: 1px solid #34495e;
-            padding-top: 8px;
-            margin-top: 8px;
-        }
-
-        .pay-row.gross-pay {
-            font-size: 1.1em;
-            background: #e8f5e8;
-            padding: 8px;
-            border-radius: 5px;
-            border: 2px solid #27ae60;
-        }
-
-        .alert {
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 8px;
-            background: #f39c12;
-            color: white;
-            font-weight: 600;
-        }
-
-        .alert.success {
-            background: #27ae60;
-        }
-
-        .alert.error {
-            background: #e74c3c;
-        }
-
-        .hours-subtitle {
-            margin-top: 20px;
-            margin-bottom: 10px;
-            color: #34495e;
-            font-size: 1.1em;
-            font-weight: 600;
-        }
-
-        .week-separator {
-            grid-column: 1 / -1;
-            height: 2px;
-            background: #3498db;
-            margin: 10px 0;
-        }
-
-        @media (max-width: 768px) {
-            .main-content {
-                flex-direction: column;
-            }
-            
-            .calendar-section, .results-section {
-                min-width: auto;
-            }
-            
-            .form-row {
-                flex-direction: column;
-            }
-
-            .shift-buttons {
-                flex-wrap: wrap;
-            }
-
-            .shift-btn {
-                min-width: 45%;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shift Schedule Payroll Calculator</title>
+<style>
+* {
+box-sizing: border-box;
+margin: 0;
+padding: 0;
+}
+
+body {
+font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+min-height: 100vh;
+padding: 20px;
+}
+
+.container {
+max-width: 1400px;
+margin: 0 auto;
+background: white;
+border-radius: 15px;
+box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+overflow: hidden;
+}
+
+.header {
+background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+color: white;
+padding: 30px;
+text-align: center;
+position: relative;
+}
+
+.header h1 {
+font-size: 2.5em;
+margin-bottom: 10px;
+}
+
+.header p {
+font-size: 1.1em;
+opacity: 0.9;
+}
+
+.settings-btn {
+position: absolute;
+top: 30px;
+right: 30px;
+background: rgba(255, 255, 255, 0.2);
+border: 2px solid white;
+color: white;
+padding: 10px 20px;
+border-radius: 8px;
+cursor: pointer;
+font-size: 16px;
+transition: all 0.3s ease;
+}
+
+.settings-btn:hover {
+background: rgba(255, 255, 255, 0.3);
+transform: translateY(-2px);
+}
+
+.main-content {
+display: flex;
+flex-wrap: wrap;
+min-height: 600px;
+}
+
+.calendar-section {
+flex: 2;
+min-width: 700px;
+padding: 30px;
+background: #f8f9fa;
+}
+
+.results-section {
+flex: 1;
+min-width: 400px;
+padding: 30px;
+background: white;
+}
+
+.section-title {
+font-size: 1.5em;
+color: #2c3e50;
+margin-bottom: 20px;
+border-bottom: 3px solid #3498db;
+padding-bottom: 10px;
+}
+
+/* Calendar Styles */
+.shift-buttons {
+display: flex;
+gap: 15px;
+margin-bottom: 30px;
+justify-content: center;
+}
+
+.shift-btn {
+padding: 20px 30px;
+border: none;
+border-radius: 12px;
+font-size: 18px;
+font-weight: 600;
+cursor: pointer;
+transition: all 0.3s ease;
+animation: pulse 2s infinite;
+color: white;
+min-width: 120px;
+}
+
+@keyframes pulse {
+0% {
+    transform: scale(1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+50% {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+100% {
+    transform: scale(1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+}
+
+.shift-btn:hover {
+animation: none;
+transform: scale(1.1);
+}
+
+.shift-btn.day {
+background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+}
+
+.shift-btn.evening {
+background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+}
+
+.shift-btn.night {
+background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+}
+
+.shift-btn.off {
+background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+}
+
+.calendar-grid {
+display: grid;
+grid-template-columns: repeat(7, 1fr);
+gap: 5px;
+background: white;
+padding: 20px;
+border-radius: 12px;
+box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.calendar-header {
+font-weight: bold;
+text-align: center;
+padding: 10px;
+background: #e3f2fd;
+border-radius: 8px;
+color: #2c3e50;
+}
+
+.calendar-day {
+aspect-ratio: 1;
+display: flex;
+flex-direction: column;
+border: 2px solid #e0e0e0;
+border-radius: 8px;
+cursor: pointer;
+transition: all 0.2s ease;
+position: relative;
+min-height: 120px;
+padding: 5px;
+}
+
+.calendar-day:hover {
+border-color: #3498db;
+transform: translateY(-2px);
+box-shadow: 0 4px 10px rgba(52, 152, 219, 0.2);
+}
+
+.calendar-day.current {
+border-color: #e74c3c;
+background: #ffebee;
+animation: blink 1s infinite;
+}
+
+@keyframes blink {
+0%, 100% { opacity: 1; }
+50% { opacity: 0.7; }
+}
+
+.day-number {
+font-size: 12px;
+color: #666;
+font-weight: bold;
+margin-bottom: 5px;
+}
+
+.shifts-container {
+flex: 1;
+display: flex;
+flex-direction: column;
+gap: 2px;
+position: relative;
+}
+
+.shift-item {
+background: #f8f9fa;
+border-radius: 4px;
+padding: 3px 6px;
+font-size: 10px;
+display: flex;
+justify-content: space-between;
+align-items: center;
+cursor: pointer;
+transition: all 0.2s ease;
+border: 1px solid transparent;
+}
+
+.shift-item:hover {
+transform: scale(1.05);
+border-color: #3498db;
+box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.shift-item.day {
+background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+color: white;
+}
+
+.shift-item.evening {
+background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+color: white;
+}
+
+.shift-item.night {
+background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+color: white;
+}
+
+.shift-item.off {
+background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+color: white;
+}
+
+.shift-label {
+font-weight: bold;
+font-size: 9px;
+}
+
+.shift-hours {
+font-size: 8px;
+opacity: 0.9;
+}
+
+.empty-day {
+color: #bbb;
+font-size: 10px;
+text-align: center;
+padding: 10px 0;
+font-style: italic;
+}
+
+.plus-button {
+position: absolute;
+bottom: 2px;
+right: 2px;
+width: 18px;
+height: 18px;
+background: #27ae60;
+color: white;
+border-radius: 50%;
+display: flex;
+align-items: center;
+justify-content: center;
+font-size: 12px;
+font-weight: bold;
+cursor: pointer;
+transition: all 0.2s ease;
+opacity: 0;
+transform: scale(0.8);
+}
+
+.plus-button:hover {
+opacity: 1;
+transform: scale(1.1);
+box-shadow: 0 2px 6px rgba(39, 174, 96, 0.4);
+}
+
+.calendar-day:hover .plus-button {
+opacity: 1;
+transform: scale(1);
+}
+
+/* Settings Modal */
+.settings-modal {
+display: none;
+position: fixed;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+background: rgba(0, 0, 0, 0.5);
+z-index: 1000;
+align-items: center;
+justify-content: center;
+}
+
+.settings-modal.active {
+display: flex;
+}
+
+.settings-content {
+background: white;
+padding: 30px;
+border-radius: 15px;
+max-width: 600px;
+width: 90%;
+max-height: 80vh;
+overflow-y: auto;
+}
+
+.settings-header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 20px;
+}
+
+.close-btn {
+background: #e74c3c;
+color: white;
+border: none;
+border-radius: 50%;
+width: 30px;
+height: 30px;
+cursor: pointer;
+font-size: 20px;
+}
+
+.form-group {
+margin-bottom: 20px;
+}
+
+.form-row {
+display: flex;
+gap: 15px;
+margin-bottom: 15px;
+}
+
+.form-row .form-group {
+flex: 1;
+margin-bottom: 0;
+}
+
+label {
+display: block;
+margin-bottom: 5px;
+font-weight: 600;
+color: #34495e;
+}
+
+input, select {
+width: 100%;
+padding: 12px;
+border: 2px solid #e0e0e0;
+border-radius: 8px;
+font-size: 16px;
+transition: border-color 0.3s ease;
+}
+
+input:focus, select:focus {
+outline: none;
+border-color: #3498db;
+box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+.btn {
+background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+color: white;
+padding: 15px 30px;
+border: none;
+border-radius: 8px;
+font-size: 16px;
+font-weight: 600;
+cursor: pointer;
+transition: transform 0.2s ease, box-shadow 0.2s ease;
+width: 100%;
+margin-top: 10px;
+}
+
+.btn:hover {
+transform: translateY(-2px);
+box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+}
+
+.btn-secondary {
+background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+}
+
+.pay-stub {
+background: #f8f9fa;
+border: 2px solid #e0e0e0;
+border-radius: 10px;
+padding: 20px;
+margin-top: 20px;
+font-family: 'Courier New', monospace;
+font-size: 14px;
+}
+
+.pay-stub-header {
+text-align: center;
+border-bottom: 2px solid #34495e;
+padding-bottom: 15px;
+margin-bottom: 15px;
+}
+
+.pay-stub-title {
+font-size: 1.3em;
+font-weight: bold;
+color: #2c3e50;
+}
+
+.pay-row {
+display: flex;
+justify-content: space-between;
+margin-bottom: 5px;
+padding: 2px 0;
+}
+
+.pay-row.total {
+font-weight: bold;
+border-top: 1px solid #34495e;
+padding-top: 8px;
+margin-top: 8px;
+}
+
+.pay-row.gross-pay {
+font-size: 1.1em;
+background: #e8f5e8;
+padding: 8px;
+border-radius: 5px;
+border: 2px solid #27ae60;
+}
+
+.alert {
+padding: 15px;
+margin-bottom: 20px;
+border-radius: 8px;
+background: #f39c12;
+color: white;
+font-weight: 600;
+}
+
+.alert.success {
+background: #27ae60;
+}
+
+.alert.error {
+background: #e74c3c;
+}
+
+.hours-subtitle {
+margin-top: 20px;
+margin-bottom: 10px;
+color: #34495e;
+font-size: 1.1em;
+font-weight: 600;
+}
+
+.week-separator {
+grid-column: 1 / -1;
+height: 2px;
+background: #3498db;
+margin: 10px 0;
+}
+
+@media (max-width: 768px) {
+.main-content {
+    flex-direction: column;
+}
+
+.calendar-section, .results-section {
+    min-width: auto;
+}
+
+.form-row {
+    flex-direction: column;
+}
+
+.shift-buttons {
+    flex-wrap: wrap;
+}
+
+.shift-btn {
+    min-width: 45%;
+}
+}
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>📅 Shift Schedule Payroll Calculator</h1>
-            <p>Click shift buttons to add to current day, or use + button for multiple shifts and custom hours</p>
-            <button class="settings-btn" onclick="toggleSettings()">⚙️ Settings</button>
-        </div>
+<div class="container">
+<div class="header">
+<h1>📅 Shift Schedule Payroll Calculator</h1>
+<p>Click shift buttons to add to current day, or use + button for multiple shifts and custom hours</p>
+<button class="settings-btn" onclick="toggleSettings()">⚙️ Settings</button>
+</div>
 
-        <div class="main-content">
-            <div class="calendar-section">
-                <h2 class="section-title">Build Your Schedule</h2>
-                
-                <div class="shift-buttons">
-                    <button class="shift-btn day" onclick="addShift('day')">☀️ Day</button>
-                    <button class="shift-btn evening" onclick="addShift('evening')">🌅 Evening</button>
-                    <button class="shift-btn night" onclick="addShift('night')">🌙 Night</button>
-                    <button class="shift-btn off" onclick="addShift('off')">😴 Day Off</button>
-                </div>
-
-                <div id="calendarGrid" class="calendar-grid">
-                    <!-- Calendar will be generated here -->
-                </div>
-
-                <div style="margin-top: 20px; text-align: center;">
-                    <button class="btn btn-secondary" onclick="clearSchedule()">Clear Schedule</button>
-                    <button class="btn" onclick="calculatePayroll()">Calculate Payroll</button>
-                </div>
-            </div>
-
-            <div class="results-section">
-                <h2 class="section-title">Payroll Summary</h2>
-                <div id="results">
-                    <div class="alert">
-                        Build your 2-week schedule by clicking shift buttons or using the + button for multiple shifts per day.
-                    </div>
-                </div>
-            </div>
-        </div>
+<div class="main-content">
+<div class="calendar-section">
+    <h2 class="section-title">Build Your Schedule</h2>
+    
+    <div class="shift-buttons">
+        <button class="shift-btn day" onclick="addShift('day')">☀️ Day</button>
+        <button class="shift-btn evening" onclick="addShift('evening')">🌅 Evening</button>
+        <button class="shift-btn night" onclick="addShift('night')">🌙 Night</button>
+        <button class="shift-btn off" onclick="addShift('off')">😴 Day Off</button>
     </div>
 
-    <!-- Settings Modal -->
-    <div id="settingsModal" class="settings-modal">
-        <div class="settings-content">
-            <div class="settings-header">
-                <h2>⚙️ Payroll Settings</h2>
-                <button class="close-btn" onclick="toggleSettings()">×</button>
-            </div>
-
-            <div class="form-group">
-                <h3>Schedule Settings</h3>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="startDate">Pay Period Start Date</label>
-                        <input type="date" id="startDate">
-                    </div>
-                    <div class="form-group">
-                        <label for="startDay">Week Starts On</label>
-                        <select id="startDay">
-                            <option value="0">Sunday</option>
-                            <option value="1" selected>Monday</option>
-                            <option value="2">Tuesday</option>
-                            <option value="3">Wednesday</option>
-                            <option value="4">Thursday</option>
-                            <option value="5">Friday</option>
-                            <option value="6">Saturday</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <h3>Wage Settings</h3>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="hourlyWage">Hourly Rate ($)</label>
-                        <input type="number" id="hourlyWage" step="0.01" value="35.00">
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <h3>Shift Hours</h3>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="dayShiftHours">Day Shift Hours</label>
-                        <input type="number" id="dayShiftHours" step="0.5" value="7.5">
-                    </div>
-                    <div class="form-group">
-                        <label for="eveningShiftHours">Evening Shift Hours</label>
-                        <input type="number" id="eveningShiftHours" step="0.5" value="7.5">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="nightShiftHours">Night Shift Hours</label>
-                        <input type="number" id="nightShiftHours" step="0.5" value="8">
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <h3>Shift Premium Rates ($/hr)</h3>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="nightShiftPremium">Night Shift Premium</label>
-                        <input type="number" id="nightShiftPremium" step="0.01" value="4.00">
-                    </div>
-                    <div class="form-group">
-                        <label for="eveningShiftPremium">Evening Shift Premium</label>
-                        <input type="number" id="eveningShiftPremium" step="0.01" value="2.00">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="weekendPremium">Weekend Premium</label>
-                        <input type="number" id="weekendPremium" step="0.01" value="2.00">
-                    </div>
-                    <div class="form-group">
-                        <label for="onCallPremium">On-Call Premium</label>
-                        <input type="number" id="onCallPremium" step="0.01" value="3.00">
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <h3>Overtime Settings</h3>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="normalDailyHours">Normal Daily Hours</label>
-                        <input type="number" id="normalDailyHours" step="0.5" value="8" min="1" max="24">
-                    </div>
-                    <div class="form-group">
-                        <label for="normalWeeklyHours">Normal Weekly Hours</label>
-                        <input type="number" id="normalWeeklyHours" step="0.5" value="40" min="1" max="168">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="ot1Rate">OT1 Rate (1.5x threshold)</label>
-                        <input type="number" id="ot1Rate" step="0.1" value="1.5" min="1" max="3">
-                    </div>
-                    <div class="form-group">
-                        <label for="ot2Rate">OT2 Rate (2.0x threshold)</label>
-                        <input type="number" id="ot2Rate" step="0.1" value="2.0" min="1" max="5">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="dailyOt1Threshold">Daily OT1 After Hours</label>
-                        <input type="number" id="dailyOt1Threshold" step="0.5" value="8" min="1" max="24">
-                        <small style="color: #666; font-size: 12px;">First 4 hours after normal daily hours at 1.5x</small>
-                    </div>
-                    <div class="form-group">
-                        <label for="dailyOt2Threshold">Daily OT2 After Hours</label>
-                        <input type="number" id="dailyOt2Threshold" step="0.5" value="12" min="1" max="24">
-                        <small style="color: #666; font-size: 12px;">All hours after 12 hours per day at 2.0x</small>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="minOvertimeMinutes">Minimum OT Minutes</label>
-                        <input type="number" id="minOvertimeMinutes" step="5" value="15" min="0" max="60">
-                        <small style="color: #666; font-size: 12px;">Minimum minutes to qualify for overtime pay</small>
-                    </div>
-                    <div class="form-group">
-                        <label for="weeklyOtCalculation">Weekly OT Calculation</label>
-                        <select id="weeklyOtCalculation">
-                            <option value="standard">Standard (40h/week)</option>
-                            <option value="collective">Collective Agreement (after daily OT)</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <h3>Holiday Settings</h3>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="holidayRate15">Regular Holiday Rate</label>
-                        <input type="number" id="holidayRate15" step="0.1" value="1.5">
-                    </div>
-                    <div class="form-group">
-                        <label for="holidayRate20">Premium Holiday Rate</label>
-                        <input type="number" id="holidayRate20" step="0.1" value="2.0">
-                    </div>
-                </div>
-            </div>
-
-            <button class="btn" onclick="saveSettings()">Save Settings</button>
-        </div>
+    <div id="calendarGrid" class="calendar-grid">
+        <!-- Calendar will be generated here -->
     </div>
 
-    <!-- Shift Edit Modal -->
-    <div id="shiftModal" class="settings-modal">
-        <div class="settings-content">
-            <div class="settings-header">
-                <h2 id="shiftModalTitle">Add Shift</h2>
-                <button class="close-btn" onclick="toggleShiftModal()">×</button>
-            </div>
+    <div style="margin-top: 20px; text-align: center;">
+        <button class="btn btn-secondary" onclick="clearSchedule()">Clear Schedule</button>
+        <button class="btn" onclick="calculatePayroll()">Calculate Payroll</button>
+    </div>
+</div>
 
-            <div class="form-group">
-                <label for="shiftType">Shift Type</label>
-                <select id="shiftType">
-                    <option value="day">☀️ Day Shift</option>
-                    <option value="evening">🌅 Evening Shift</option>
-                    <option value="night">🌙 Night Shift</option>
-                    <option value="off">😴 Day Off</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="shiftHours">Hours</label>
-                <input type="number" id="shiftHours" step="0.25" min="0" max="24" value="8">
-            </div>
-
-            <div class="form-group">
-                <label for="shiftNote">Note (optional)</label>
-                <input type="text" id="shiftNote" placeholder="e.g., Training, Meeting, etc.">
-            </div>
-
-            <div style="display: flex; gap: 15px;">
-                <button class="btn btn-secondary" onclick="toggleShiftModal()">Cancel</button>
-                <button class="btn" onclick="saveShift()">Save Shift</button>
-                <button id="deleteShiftBtn" class="btn" style="background: #e74c3c;" onclick="deleteShift()" style="display: none;">Delete</button>
-            </div>
+<div class="results-section">
+    <h2 class="section-title">Payroll Summary</h2>
+    <div id="results">
+        <div class="alert">
+            Build your 2-week schedule by clicking shift buttons or using the + button for multiple shifts per day.
         </div>
     </div>
+</div>
+</div>
+</div>
 
-    <script>
-        class ShiftScheduler {
-            constructor() {
-                this.schedule = new Array(14).fill(null).map(() => []);
-                this.currentDay = 0;
-                this.editingDay = -1;
-                this.editingShiftIndex = -1;
-                this.settings = {
-                    startDate: new Date(),
-                    startDay: 1, // Monday
-                    hourlyWage: 35.00,
-                    shiftHours: {
-                        day: 7.5,
-                        evening: 7.5,
-                        night: 8,
-                        off: 0
-                    },
-                    shiftPremiums: {
-                        night: 4.00,
-                        evening: 2.00,
-                        weekend: 2.00,
-                        onCall: 3.00
-                    },
-                    overtimeRules: {
-                        normalDailyHours: 8,
-                        normalWeeklyHours: 40,
-                        ot1Rate: 1.5,
-                        ot2Rate: 2.0,
-                        dailyOt1Threshold: 8, // OT1 starts after 8 hours
-                        dailyOt2Threshold: 12, // OT2 starts after 12 hours
-                        minOvertimeMinutes: 15,
-                        weeklyOtCalculation: 'collective' // 'standard' or 'collective'
-                    },
-                    holidayRates: {
-                        regular: 1.5,
-                        premium: 2.0
-                    }
-                };
-                this.loadSettings();
-                this.initCalendar();
-            }
+<!-- Settings Modal -->
+<div id="settingsModal" class="settings-modal">
+<div class="settings-content">
+<div class="settings-header">
+    <h2>⚙️ Payroll Settings</h2>
+    <button class="close-btn" onclick="toggleSettings()">×</button>
+</div>
 
-            loadSettings() {
-                const saved = localStorage.getItem('shiftSettings');
-                if (saved) {
-                    this.settings = JSON.parse(saved);
-                    // Set the start date to today if not set
-                    if (!this.settings.startDate || this.settings.startDate === 'null') {
-                        this.settings.startDate = new Date().toISOString().split('T')[0];
-                    }
-                }
-                this.updateSettingsUI();
-            }
+<div class="form-group">
+    <h3>Schedule Settings</h3>
+    <div class="form-row">
+        <div class="form-group">
+            <label for="startDate">Pay Period Start Date</label>
+            <input type="date" id="startDate">
+        </div>
+        <div class="form-group">
+            <label for="startDay">Week Starts On</label>
+            <select id="startDay">
+                <option value="0">Sunday</option>
+                <option value="1" selected>Monday</option>
+                <option value="2">Tuesday</option>
+                <option value="3">Wednesday</option>
+                <option value="4">Thursday</option>
+                <option value="5">Friday</option>
+                <option value="6">Saturday</option>
+            </select>
+        </div>
+    </div>
+</div>
 
-            saveSettings(settings) {
-                this.settings = settings;
-                localStorage.setItem('shiftSettings', JSON.stringify(settings));
-                this.initCalendar();
-            }
+<div class="form-group">
+    <h3>Employment Settings</h3>
+    <div class="form-row">
+        <div class="form-group">
+            <label for="employmentStatus">Employment Status</label>
+            <select id="employmentStatus">
+                <option value="full-time">Full-Time Regular</option>
+                <option value="part-time">Part-Time Regular</option>
+                <option value="casual">Casual</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="validateOverlaps">Validate Shift Overlaps</label>
+            <select id="validateOverlaps">
+                <option value="true">Yes - Check for overlaps</option>
+                <option value="false">No - Allow overlaps</option>
+            </select>
+        </div>
+    </div>
+</div>
 
-            updateSettingsUI() {
-                document.getElementById('startDate').value = this.settings.startDate || new Date().toISOString().split('T')[0];
-                document.getElementById('startDay').value = this.settings.startDay;
-                document.getElementById('hourlyWage').value = this.settings.hourlyWage;
-                document.getElementById('dayShiftHours').value = this.settings.shiftHours.day;
-                document.getElementById('eveningShiftHours').value = this.settings.shiftHours.evening;
-                document.getElementById('nightShiftHours').value = this.settings.shiftHours.night;
-                document.getElementById('nightShiftPremium').value = this.settings.shiftPremiums.night;
-                document.getElementById('eveningShiftPremium').value = this.settings.shiftPremiums.evening;
-                document.getElementById('weekendPremium').value = this.settings.shiftPremiums.weekend;
-                document.getElementById('onCallPremium').value = this.settings.shiftPremiums.onCall;
-                
-                // Overtime settings
-                document.getElementById('normalDailyHours').value = this.settings.overtimeRules.normalDailyHours;
-                document.getElementById('normalWeeklyHours').value = this.settings.overtimeRules.normalWeeklyHours;
-                document.getElementById('ot1Rate').value = this.settings.overtimeRules.ot1Rate;
-                document.getElementById('ot2Rate').value = this.settings.overtimeRules.ot2Rate;
-                document.getElementById('dailyOt1Threshold').value = this.settings.overtimeRules.dailyOt1Threshold;
-                document.getElementById('dailyOt2Threshold').value = this.settings.overtimeRules.dailyOt2Threshold;
-                document.getElementById('minOvertimeMinutes').value = this.settings.overtimeRules.minOvertimeMinutes;
-                document.getElementById('weeklyOtCalculation').value = this.settings.overtimeRules.weeklyOtCalculation;
-                
-                document.getElementById('holidayRate15').value = this.settings.holidayRates.regular;
-                document.getElementById('holidayRate20').value = this.settings.holidayRates.premium;
-            }
+<div class="form-group" id="partTimeSection" style="display: none;">
+    <h3>Part-Time/Casual OT Calculation (6-week rotation)</h3>
+    <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
+        For part-time/casual employees: OT is calculated if total shifts exceed 30 full shifts (240 hours) over 6-week period.
+        Enter non-OT hours worked in the previous 2 pay periods to calculate accurately.
+    </p>
+    <div class="form-row">
+        <div class="form-group">
+            <label for="previousPeriod1Hours">Previous Pay Period 1 (Non-OT Hours)</label>
+            <input type="number" id="previousPeriod1Hours" step="0.25" value="0" min="0">
+            <small style="color: #666; font-size: 12px;">Regular hours worked 3-4 weeks ago</small>
+        </div>
+        <div class="form-group">
+            <label for="previousPeriod2Hours">Previous Pay Period 2 (Non-OT Hours)</label>
+            <input type="number" id="previousPeriod2Hours" step="0.25" value="0" min="0">
+            <small style="color: #666; font-size: 12px;">Regular hours worked 1-2 weeks ago</small>
+        </div>
+    </div>
+</div>
 
-            initCalendar() {
-                const grid = document.getElementById('calendarGrid');
-                grid.innerHTML = '';
+<div class="form-group">
+    <h3>Wage Settings</h3>
+    <div class="form-row">
+        <div class="form-group">
+            <label for="hourlyWage">Hourly Rate ($)</label>
+            <input type="number" id="hourlyWage" step="0.01" value="35.00">
+        </div>
+    </div>
+</div>
 
-                // Get the start date
-                const startDate = new Date(this.settings.startDate || new Date());
-                
-                // Adjust to the configured start day of week
-                const dayOfWeek = startDate.getDay();
-                const daysToSubtract = (dayOfWeek - this.settings.startDay + 7) % 7;
-                startDate.setDate(startDate.getDate() - daysToSubtract);
+<div class="form-group">
+    <h3>Shift Hours</h3>
+    <div class="form-row">
+        <div class="form-group">
+            <label for="dayShiftHours">Day Shift Hours</label>
+            <input type="number" id="dayShiftHours" step="0.5" value="7.5">
+        </div>
+        <div class="form-group">
+            <label for="eveningShiftHours">Evening Shift Hours</label>
+            <input type="number" id="eveningShiftHours" step="0.5" value="7.5">
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group">
+            <label for="nightShiftHours">Night Shift Hours</label>
+            <input type="number" id="nightShiftHours" step="0.5" value="8">
+        </div>
+    </div>
+</div>
 
-                // Days of week headers
-                const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                const orderedDays = [];
-                for (let i = 0; i < 7; i++) {
-                    orderedDays.push(daysOfWeek[(this.settings.startDay + i) % 7]);
-                }
+<div class="form-group">
+    <h3>Shift Premium Rates ($/hr)</h3>
+    <div class="form-row">
+        <div class="form-group">
+            <label for="nightShiftPremium">Night Shift Premium</label>
+            <input type="number" id="nightShiftPremium" step="0.01" value="4.00">
+        </div>
+        <div class="form-group">
+            <label for="eveningShiftPremium">Evening Shift Premium</label>
+            <input type="number" id="eveningShiftPremium" step="0.01" value="2.00">
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group">
+            <label for="weekendPremium">Weekend Premium</label>
+            <input type="number" id="weekendPremium" step="0.01" value="2.00">
+        </div>
+        <div class="form-group">
+            <label for="onCallPremium">On-Call Premium</label>
+            <input type="number" id="onCallPremium" step="0.01" value="3.00">
+        </div>
+    </div>
+</div>
 
-                orderedDays.forEach(day => {
-                    const header = document.createElement('div');
-                    header.className = 'calendar-header';
-                    header.textContent = day;
-                    grid.appendChild(header);
-                });
+<div class="form-group">
+    <h3>Overtime Settings</h3>
+    <div class="form-row">
+        <div class="form-group">
+            <label for="normalDailyHours">Normal Daily Hours</label>
+            <input type="number" id="normalDailyHours" step="0.5" value="8" min="1" max="24">
+        </div>
+        <div class="form-group">
+            <label for="normalWeeklyHours">Normal Weekly Hours</label>
+            <input type="number" id="normalWeeklyHours" step="0.5" value="40" min="1" max="168">
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group">
+            <label for="ot1Rate">OT1 Rate (1.5x threshold)</label>
+            <input type="number" id="ot1Rate" step="0.1" value="1.5" min="1" max="3">
+        </div>
+        <div class="form-group">
+            <label for="ot2Rate">OT2 Rate (2.0x threshold)</label>
+            <input type="number" id="ot2Rate" step="0.1" value="2.0" min="1" max="5">
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group">
+            <label for="dailyOt1Threshold">Daily OT1 After Hours</label>
+            <input type="number" id="dailyOt1Threshold" step="0.5" value="8" min="1" max="24">
+            <small style="color: #666; font-size: 12px;">First 4 hours after normal daily hours at 1.5x</small>
+        </div>
+        <div class="form-group">
+            <label for="dailyOt2Threshold">Daily OT2 After Hours</label>
+            <input type="number" id="dailyOt2Threshold" step="0.5" value="12" min="1" max="24">
+            <small style="color: #666; font-size: 12px;">All hours after 12 hours per day at 2.0x</small>
+        </div>
+    </div>
+    <div class="form-row">
+        <div class="form-group">
+            <label for="minOvertimeMinutes">Minimum OT Minutes</label>
+            <input type="number" id="minOvertimeMinutes" step="5" value="15" min="0" max="60">
+            <small style="color: #666; font-size: 12px;">Minimum minutes to qualify for overtime pay</small>
+        </div>
+        <div class="form-group">
+            <label for="weeklyOtCalculation">Weekly OT Calculation</label>
+            <select id="weeklyOtCalculation">
+                <option value="standard">Standard (40h/week)</option>
+                <option value="collective">Collective Agreement (after daily OT)</option>
+            </select>
+        </div>
+    </div>
+</div>
 
-                // Create calendar days
-                for (let i = 0; i < 14; i++) {
-                    if (i === 7) {
-                        // Week separator
-                        const separator = document.createElement('div');
-                        separator.className = 'week-separator';
-                        grid.appendChild(separator);
-                    }
+<div class="form-group">
+    <h3>Holiday Settings</h3>
+    <div class="form-row">
+        <div class="form-group">
+            <label for="holidayRate15">Regular Holiday Rate</label>
+            <input type="number" id="holidayRate15" step="0.1" value="1.5">
+        </div>
+        <div class="form-group">
+            <label for="holidayRate20">Premium Holiday Rate</label>
+            <input type="number" id="holidayRate20" step="0.1" value="2.0">
+        </div>
+    </div>
+</div>
 
-                    const dayElement = document.createElement('div');
-                    dayElement.className = 'calendar-day';
-                    if (i === this.currentDay) {
-                        dayElement.classList.add('current');
-                    }
-                    
-                    const currentDate = new Date(startDate);
-                    currentDate.setDate(startDate.getDate() + i);
-                    
-                    const dayNumber = document.createElement('div');
-                    dayNumber.className = 'day-number';
-                    dayNumber.textContent = currentDate.getDate();
-                    dayElement.appendChild(dayNumber);
+<button class="btn" onclick="saveSettings()">Save Settings</button>
+</div>
+</div>
 
-                    // Container for shifts
-                    const shiftsContainer = document.createElement('div');
-                    shiftsContainer.className = 'shifts-container';
-                    
-                    // Render existing shifts
-                    if (this.schedule[i] && this.schedule[i].length > 0) {
-                        this.schedule[i].forEach((shift, shiftIndex) => {
-                            const shiftElement = document.createElement('div');
-                            shiftElement.className = `shift-item ${shift.type}`;
-                            shiftElement.innerHTML = `
-                                <span class="shift-label">${this.getShiftDisplay(shift.type)}</span>
-                                <span class="shift-hours">${shift.hours}h</span>
-                            `;
-                            shiftElement.onclick = (e) => {
-                                e.stopPropagation();
-                                this.editShift(i, shiftIndex);
-                            };
-                            shiftsContainer.appendChild(shiftElement);
-                        });
-                    } else {
-                        // Empty day placeholder
-                        const emptyElement = document.createElement('div');
-                        emptyElement.className = 'empty-day';
-                        emptyElement.textContent = 'No shifts';
-                        shiftsContainer.appendChild(emptyElement);
-                    }
+<!-- Shift Edit Modal -->
+<div id="shiftModal" class="settings-modal">
+<div class="settings-content">
+<div class="settings-header">
+    <h2 id="shiftModalTitle">Add Shift</h2>
+    <button class="close-btn" onclick="toggleShiftModal()">×</button>
+</div>
 
-                    // Add plus button
-                    const plusButton = document.createElement('div');
-                    plusButton.className = 'plus-button';
-                    plusButton.innerHTML = '+';
-                    plusButton.onclick = (e) => {
-                        e.stopPropagation();
-                        this.addShiftToDay(i);
-                    };
-                    shiftsContainer.appendChild(plusButton);
-                    
-                    dayElement.appendChild(shiftsContainer);
-                    dayElement.onclick = () => this.selectDay(i);
-                    
-                    grid.appendChild(dayElement);
-                }
-            }
+<div class="form-group">
+    <label for="shiftType">Shift Type</label>
+    <select id="shiftType">
+        <option value="day">☀️ Day Shift</option>
+        <option value="evening">🌅 Evening Shift</option>
+        <option value="night">🌙 Night Shift</option>
+        <option value="off">😴 Day Off</option>
+    </select>
+</div>
 
-            getShiftDisplay(shift) {
-                const displays = {
-                    'day': 'Day',
-                    'evening': 'Evening',
-                    'night': 'Night',
-                    'off': 'Off'
-                };
-                return displays[shift] || '';
-            }
+<div class="form-row">
+    <div class="form-group">
+        <label for="shiftHours">Hours</label>
+        <input type="number" id="shiftHours" step="0.25" min="0" max="24" value="8">
+    </div>
+    <div class="form-group">
+        <label for="startTime">Start Time</label>
+        <input type="time" id="startTime" value="07:00">
+    </div>
+</div>
 
-            addShift(type) {
-                if (this.currentDay < 14) {
-                    const hours = this.settings.shiftHours[type] || 0;
-                    this.schedule[this.currentDay].push({
-                        type: type,
-                        hours: hours,
-                        note: ''
-                    });
-                    this.currentDay++;
-                    if (this.currentDay >= 14) {
-                        this.currentDay = 0; // Reset to beginning
-                    }
-                    this.initCalendar();
-                }
-            }
+<div class="form-group">
+    <label for="shiftNote">Note (optional)</label>
+    <input type="text" id="shiftNote" placeholder="e.g., Training, Meeting, etc.">
+</div>
 
-            addShiftToDay(dayIndex) {
-                this.editingDay = dayIndex;
-                this.editingShiftIndex = -1; // -1 means new shift
-                
-                document.getElementById('shiftModalTitle').textContent = `Add Shift - Day ${dayIndex + 1}`;
-                document.getElementById('shiftType').value = 'day';
-                document.getElementById('shiftHours').value = this.settings.shiftHours.day;
-                document.getElementById('shiftNote').value = '';
-                document.getElementById('deleteShiftBtn').style.display = 'none';
-                
-                toggleShiftModal();
-            }
+<div style="display: flex; gap: 15px;">
+    <button class="btn btn-secondary" onclick="toggleShiftModal()">Cancel</button>
+    <button class="btn" onclick="saveShift()">Save Shift</button>
+    <button id="deleteShiftBtn" class="btn" style="background: #e74c3c;" onclick="deleteShift()" style="display: none;">Delete</button>
+</div>
+</div>
+</div>
 
-            editShift(dayIndex, shiftIndex) {
-                this.editingDay = dayIndex;
-                this.editingShiftIndex = shiftIndex;
-                
-                const shift = this.schedule[dayIndex][shiftIndex];
-                
-                document.getElementById('shiftModalTitle').textContent = `Edit Shift - Day ${dayIndex + 1}`;
-                document.getElementById('shiftType').value = shift.type;
-                document.getElementById('shiftHours').value = shift.hours;
-                document.getElementById('shiftNote').value = shift.note || '';
-                document.getElementById('deleteShiftBtn').style.display = 'inline-block';
-                
-                toggleShiftModal();
-            }
+<script>
+class ShiftScheduler {
+constructor() {
+    this.schedule = new Array(14).fill(null).map(() => []);
+    this.currentDay = 0;
+    this.editingDay = -1;
+    this.editingShiftIndex = -1;
+    this.settings = {
+        startDate: new Date(),
+        startDay: 1, // Monday
+        hourlyWage: 35.00,
+        employmentStatus: 'full-time', // 'full-time', 'part-time', 'casual'
+        validateOverlaps: true,
+        previousPeriod1Hours: 0,
+        previousPeriod2Hours: 0,
+        shiftHours: {
+            day: 7.5,
+            evening: 7.5,
+            night: 8,
+            off: 0
+        },
+        defaultStartTimes: {
+            day: '07:00',
+            evening: '15:00',
+            night: '23:00',
+            off: '00:00'
+        },
+        shiftPremiums: {
+            night: 4.00,
+            evening: 2.00,
+            weekend: 2.00,
+            onCall: 3.00
+        },
+        overtimeRules: {
+            normalDailyHours: 8,
+            normalWeeklyHours: 40,
+            ot1Rate: 1.5,
+            ot2Rate: 2.0,
+            dailyOt1Threshold: 8, // OT1 starts after 8 hours
+            dailyOt2Threshold: 12, // OT2 starts after 12 hours
+            minOvertimeMinutes: 15,
+            weeklyOtCalculation: 'collective' // 'standard' or 'collective'
+        },
+        holidayRates: {
+            regular: 1.5,
+            premium: 2.0
+        }
+    };
+    this.loadSettings();
+    this.initCalendar();
+}
 
-            selectDay(day) {
-                this.currentDay = day;
-                this.initCalendar();
-            }
+loadSettings() {
+    const saved = localStorage.getItem('shiftSettings');
+    if (saved) {
+        this.settings = JSON.parse(saved);
+        // Set the start date to today if not set
+        if (!this.settings.startDate || this.settings.startDate === 'null') {
+            this.settings.startDate = new Date().toISOString().split('T')[0];
+        }
+    }
+    this.updateSettingsUI();
+}
 
-            clearSchedule() {
-                this.schedule = new Array(14).fill(null).map(() => []);
-                this.currentDay = 0;
-                this.initCalendar();
-            }
+saveSettings(settings) {
+    this.settings = settings;
+    localStorage.setItem('shiftSettings', JSON.stringify(settings));
+    this.initCalendar();
+}
 
-            calculatePayroll() {
-                let totalHours = 0;
-                let regularHours = 0;
-                let ot1Hours = 0; // 1.5x overtime
-                let ot2Hours = 0; // 2.0x overtime
-                let nightHours = 0;
-                let eveningHours = 0;
-                let weekendHours = 0;
-                
-                const overtimeRules = this.settings.overtimeRules;
-                const weeklyHours = [0, 0]; // Track hours for each week
-                const dailyOvertimeHours = []; // Track daily overtime for weekly calculation
-                
-                // First pass: Calculate daily hours and daily overtime
-                this.schedule.forEach((dayShifts, dayIndex) => {
-                    let dailyTotal = 0;
-                    let dailyRegular = 0;
-                    let dailyOt1 = 0;
-                    let dailyOt2 = 0;
-                    
-                    dayShifts.forEach((shift) => {
-                        if (shift.type !== 'off') {
-                            const hours = shift.hours;
-                            dailyTotal += hours;
-                            
-                            // Check if weekend for premium calculation
-                            const dayOfWeek = (this.settings.startDay + dayIndex) % 7;
-                            if (dayOfWeek === 0 || dayOfWeek === 6) {
-                                weekendHours += hours;
-                            }
-                            
-                            // Track shift types for premiums
-                            if (shift.type === 'night') {
-                                nightHours += hours;
-                            } else if (shift.type === 'evening') {
-                                eveningHours += hours;
-                            }
-                        }
-                    });
-                    
-                    // Apply daily overtime rules per collective agreement
-                    if (dailyTotal > overtimeRules.dailyOt2Threshold) {
-                        // Hours over 12 are OT2 (2.0x)
-                        dailyOt2 = dailyTotal - overtimeRules.dailyOt2Threshold;
-                        dailyOt1 = Math.min(4, overtimeRules.dailyOt2Threshold - overtimeRules.dailyOt1Threshold);
-                        dailyRegular = overtimeRules.dailyOt1Threshold;
-                    } else if (dailyTotal > overtimeRules.dailyOt1Threshold) {
-                        // Hours over 8 (up to 12) are OT1 (1.5x), max 4 hours
-                        dailyOt1 = Math.min(4, dailyTotal - overtimeRules.dailyOt1Threshold);
-                        dailyRegular = Math.min(dailyTotal, overtimeRules.dailyOt1Threshold);
-                    } else {
-                        // All hours are regular
-                        dailyRegular = dailyTotal;
-                    }
-                    
-                    // Apply minimum overtime rule (15 minutes)
-                    const minOtHours = overtimeRules.minOvertimeMinutes / 60;
-                    if (dailyOt1 > 0 && dailyOt1 < minOtHours) {
-                        dailyRegular += dailyOt1;
-                        dailyOt1 = 0;
-                    }
-                    if (dailyOt2 > 0 && dailyOt2 < minOtHours) {
-                        dailyOt1 += dailyOt2;
-                        dailyOt2 = 0;
-                    }
-                    
-                    // Track weekly totals
-                    const week = Math.floor(dayIndex / 7);
-                    weeklyHours[week] += dailyTotal;
-                    
-                    // Accumulate totals
-                    regularHours += dailyRegular;
-                    ot1Hours += dailyOt1;
-                    ot2Hours += dailyOt2;
-                    
-                    dailyOvertimeHours.push({
-                        regular: dailyRegular,
-                        ot1: dailyOt1,
-                        ot2: dailyOt2,
-                        total: dailyTotal
-                    });
-                });
-                
-                // Handle weekly overtime if using collective agreement method
-                if (overtimeRules.weeklyOtCalculation === 'collective') {
-                    // Per collective agreement: weekly OT is calculated AFTER daily OT is accounted for
-                    weeklyHours.forEach((weekTotal, weekIndex) => {
-                        if (weekTotal > overtimeRules.normalWeeklyHours) {
-                            // Calculate how much weekly overtime we have beyond daily OT
-                            let weeklyRegularUsed = 0;
-                            let weeklyOt1Used = 0;
-                            
-                            // Sum up the daily regular and OT1 hours for this week
-                            for (let day = 0; day < 7; day++) {
-                                const dayIndex = weekIndex * 7 + day;
-                                if (dayIndex < dailyOvertimeHours.length) {
-                                    weeklyRegularUsed += dailyOvertimeHours[dayIndex].regular;
-                                    weeklyOt1Used += dailyOvertimeHours[dayIndex].ot1;
-                                }
-                            }
-                            
-                            // If we have regular hours that push us over 40, convert them to OT1
-                            if (weeklyRegularUsed > overtimeRules.normalWeeklyHours) {
-                                const excessRegular = weeklyRegularUsed - overtimeRules.normalWeeklyHours;
-                                regularHours -= excessRegular;
-                                ot1Hours += excessRegular;
-                            }
-                        }
-                    });
-                }
-                
-                totalHours = regularHours + ot1Hours + ot2Hours;
-                
-                // Calculate pay
-                const hourlyRate = this.settings.hourlyWage;
-                const regularPay = regularHours * hourlyRate;
-                const ot1Pay = ot1Hours * hourlyRate * overtimeRules.ot1Rate;
-                const ot2Pay = ot2Hours * hourlyRate * overtimeRules.ot2Rate;
-                
-                // Calculate premiums
-                const nightPremium = nightHours * this.settings.shiftPremiums.night;
-                const eveningPremium = eveningHours * this.settings.shiftPremiums.evening;
-                const weekendPremium = weekendHours * this.settings.shiftPremiums.weekend;
-                
-                const totalPremiums = nightPremium + eveningPremium + weekendPremium;
-                const grossPay = regularPay + ot1Pay + ot2Pay + totalPremiums;
-                
-                return {
-                    hours: {
-                        total: totalHours,
-                        regular: regularHours,
-                        ot1: ot1Hours,
-                        ot2: ot2Hours,
-                        night: nightHours,
-                        evening: eveningHours,
-                        weekend: weekendHours
-                    },
-                    pay: {
-                        hourlyRate: hourlyRate,
-                        regular: regularPay,
-                        ot1: ot1Pay,
-                        ot2: ot2Pay,
-                        nightPremium: nightPremium,
-                        eveningPremium: eveningPremium,
-                        weekendPremium: weekendPremium,
-                        totalPremiums: totalPremiums,
-                        gross: grossPay
-                    }
-                };
-            }
+updateSettingsUI() {
+    document.getElementById('startDate').value = this.settings.startDate || new Date().toISOString().split('T')[0];
+    document.getElementById('startDay').value = this.settings.startDay;
+    document.getElementById('hourlyWage').value = this.settings.hourlyWage;
+    
+    // Employment settings
+    document.getElementById('employmentStatus').value = this.settings.employmentStatus;
+    document.getElementById('validateOverlaps').value = this.settings.validateOverlaps;
+    document.getElementById('previousPeriod1Hours').value = this.settings.previousPeriod1Hours;
+    document.getElementById('previousPeriod2Hours').value = this.settings.previousPeriod2Hours;
+    
+    // Show/hide part-time section
+    const partTimeSection = document.getElementById('partTimeSection');
+    if (this.settings.employmentStatus === 'part-time' || this.settings.employmentStatus === 'casual') {
+        partTimeSection.style.display = 'block';
+    } else {
+        partTimeSection.style.display = 'none';
+    }
+    
+    document.getElementById('dayShiftHours').value = this.settings.shiftHours.day;
+    document.getElementById('eveningShiftHours').value = this.settings.shiftHours.evening;
+    document.getElementById('nightShiftHours').value = this.settings.shiftHours.night;
+    document.getElementById('nightShiftPremium').value = this.settings.shiftPremiums.night;
+    document.getElementById('eveningShiftPremium').value = this.settings.shiftPremiums.evening;
+    document.getElementById('weekendPremium').value = this.settings.shiftPremiums.weekend;
+    document.getElementById('onCallPremium').value = this.settings.shiftPremiums.onCall;
+    
+    // Overtime settings
+    document.getElementById('normalDailyHours').value = this.settings.overtimeRules.normalDailyHours;
+    document.getElementById('normalWeeklyHours').value = this.settings.overtimeRules.normalWeeklyHours;
+    document.getElementById('ot1Rate').value = this.settings.overtimeRules.ot1Rate;
+    document.getElementById('ot2Rate').value = this.settings.overtimeRules.ot2Rate;
+    document.getElementById('dailyOt1Threshold').value = this.settings.overtimeRules.dailyOt1Threshold;
+    document.getElementById('dailyOt2Threshold').value = this.settings.overtimeRules.dailyOt2Threshold;
+    document.getElementById('minOvertimeMinutes').value = this.settings.overtimeRules.minOvertimeMinutes;
+    document.getElementById('weeklyOtCalculation').value = this.settings.overtimeRules.weeklyOtCalculation;
+    
+    document.getElementById('holidayRate15').value = this.settings.holidayRates.regular;
+    document.getElementById('holidayRate20').value = this.settings.holidayRates.premium;
+}
 
-            formatCurrency(amount) {
-                return new Intl.NumberFormat('en-CA', {
-                    style: 'currency',
-                    currency: 'CAD'
-                }).format(amount);
-            }
+initCalendar() {
+    const grid = document.getElementById('calendarGrid');
+    grid.innerHTML = '';
+
+    // Get the start date
+    const startDate = new Date(this.settings.startDate || new Date());
+    
+    // Adjust to the configured start day of week
+    const dayOfWeek = startDate.getDay();
+    const daysToSubtract = (dayOfWeek - this.settings.startDay + 7) % 7;
+    startDate.setDate(startDate.getDate() - daysToSubtract);
+
+    // Days of week headers
+    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const orderedDays = [];
+    for (let i = 0; i < 7; i++) {
+        orderedDays.push(daysOfWeek[(this.settings.startDay + i) % 7]);
+    }
+
+    orderedDays.forEach(day => {
+        const header = document.createElement('div');
+        header.className = 'calendar-header';
+        header.textContent = day;
+        grid.appendChild(header);
+    });
+
+    // Create calendar days
+    for (let i = 0; i < 14; i++) {
+        if (i === 7) {
+            // Week separator
+            const separator = document.createElement('div');
+            separator.className = 'week-separator';
+            grid.appendChild(separator);
         }
 
-        // Initialize scheduler
-        const scheduler = new ShiftScheduler();
+        const dayElement = document.createElement('div');
+        dayElement.className = 'calendar-day';
+        if (i === this.currentDay) {
+            dayElement.classList.add('current');
+        }
+        
+        const currentDate = new Date(startDate);
+        currentDate.setDate(startDate.getDate() + i);
+        
+        const dayNumber = document.createElement('div');
+        dayNumber.className = 'day-number';
+        dayNumber.textContent = currentDate.getDate();
+        dayElement.appendChild(dayNumber);
 
-        function toggleSettings() {
-            const modal = document.getElementById('settingsModal');
-            modal.classList.toggle('active');
+        // Container for shifts
+        const shiftsContainer = document.createElement('div');
+        shiftsContainer.className = 'shifts-container';
+        
+        // Render existing shifts (sorted by start time)
+        if (this.schedule[i] && this.schedule[i].length > 0) {
+            // Sort shifts by start time
+            const sortedShifts = [...this.schedule[i]].sort((a, b) => {
+                const timeA = a.startTime || '00:00';
+                const timeB = b.startTime || '00:00';
+                return timeA.localeCompare(timeB);
+            });
+            
+            sortedShifts.forEach((shift, shiftIndex) => {
+                const originalIndex = this.schedule[i].indexOf(shift);
+                const shiftElement = document.createElement('div');
+                shiftElement.className = `shift-item ${shift.type}`;
+                
+                const startTimeDisplay = shift.startTime ? ` ${shift.startTime}` : '';
+                shiftElement.innerHTML = `
+                    <span class="shift-label">${this.getShiftDisplay(shift.type)}${startTimeDisplay}</span>
+                    <span class="shift-hours">${shift.hours}h</span>
+                `;
+                shiftElement.onclick = (e) => {
+                    e.stopPropagation();
+                    this.editShift(i, originalIndex);
+                };
+                shiftsContainer.appendChild(shiftElement);
+            });
+        } else {
+            // Empty day placeholder
+            const emptyElement = document.createElement('div');
+            emptyElement.className = 'empty-day';
+            emptyElement.textContent = 'No shifts';
+            shiftsContainer.appendChild(emptyElement);
         }
 
-        function toggleShiftModal() {
-            const modal = document.getElementById('shiftModal');
-            modal.classList.toggle('active');
+        // Add plus button
+        const plusButton = document.createElement('div');
+        plusButton.className = 'plus-button';
+        plusButton.innerHTML = '+';
+        plusButton.onclick = (e) => {
+            e.stopPropagation();
+            this.addShiftToDay(i);
+        };
+        shiftsContainer.appendChild(plusButton);
+        
+        dayElement.appendChild(shiftsContainer);
+        dayElement.onclick = () => this.selectDay(i);
+        
+        grid.appendChild(dayElement);
+    }
+}
+
+getShiftDisplay(shift) {
+    const displays = {
+        'day': 'Day',
+        'evening': 'Evening',
+        'night': 'Night',
+        'off': 'Off'
+    };
+    return displays[shift] || '';
+}
+
+addShift(type) {
+    if (this.currentDay < 14) {
+        const hours = this.settings.shiftHours[type] || 0;
+        const startTime = this.settings.defaultStartTimes[type] || '07:00';
+        this.schedule[this.currentDay].push({
+            type: type,
+            hours: hours,
+            startTime: startTime,
+            note: ''
+        });
+        this.currentDay++;
+        if (this.currentDay >= 14) {
+            this.currentDay = 0; // Reset to beginning
         }
+        this.initCalendar();
+    }
+}
 
-        function saveShift() {
-            const type = document.getElementById('shiftType').value;
-            const hours = parseFloat(document.getElementById('shiftHours').value);
-            const note = document.getElementById('shiftNote').value;
+addShiftToDay(dayIndex) {
+    this.editingDay = dayIndex;
+    this.editingShiftIndex = -1; // -1 means new shift
+    
+    document.getElementById('shiftModalTitle').textContent = `Add Shift - Day ${dayIndex + 1}`;
+    document.getElementById('shiftType').value = 'day';
+    document.getElementById('shiftHours').value = this.settings.shiftHours.day;
+    document.getElementById('startTime').value = this.settings.defaultStartTimes.day;
+    document.getElementById('shiftNote').value = '';
+    document.getElementById('deleteShiftBtn').style.display = 'none';
+    
+    toggleShiftModal();
+}
 
-            if (hours < 0 || hours > 24) {
-                showAlert('Hours must be between 0 and 24!', 'error');
-                return;
-            }
+editShift(dayIndex, shiftIndex) {
+    this.editingDay = dayIndex;
+    this.editingShiftIndex = shiftIndex;
+    
+    const shift = this.schedule[dayIndex][shiftIndex];
+    
+    document.getElementById('shiftModalTitle').textContent = `Edit Shift - Day ${dayIndex + 1}`;
+    document.getElementById('shiftType').value = shift.type;
+    document.getElementById('shiftHours').value = shift.hours;
+    document.getElementById('startTime').value = shift.startTime || '07:00';
+    document.getElementById('shiftNote').value = shift.note || '';
+    document.getElementById('deleteShiftBtn').style.display = 'inline-block';
+    
+    toggleShiftModal();
+}
 
-            const shift = {
-                type: type,
-                hours: hours,
-                note: note
+checkShiftOverlaps(dayShifts, newShift, excludeIndex = -1) {
+    if (!this.settings.validateOverlaps || newShift.type === 'off') return null;
+    
+    const newStart = this.timeToMinutes(newShift.startTime);
+    const newEnd = newStart + (newShift.hours * 60);
+    
+    for (let i = 0; i < dayShifts.length; i++) {
+        if (i === excludeIndex) continue;
+        
+        const shift = dayShifts[i];
+        if (shift.type === 'off') continue;
+        
+        const shiftStart = this.timeToMinutes(shift.startTime || '00:00');
+        const shiftEnd = shiftStart + (shift.hours * 60);
+        
+        // Check for overlap
+        if ((newStart < shiftEnd) && (newEnd > shiftStart)) {
+            return {
+                overlappingShift: shift,
+                index: i
             };
-
-            if (scheduler.editingShiftIndex === -1) {
-                // Adding new shift
-                scheduler.schedule[scheduler.editingDay].push(shift);
-                showAlert('Shift added successfully!', 'success');
-            } else {
-                // Editing existing shift
-                scheduler.schedule[scheduler.editingDay][scheduler.editingShiftIndex] = shift;
-                showAlert('Shift updated successfully!', 'success');
-            }
-
-            scheduler.initCalendar();
-            toggleShiftModal();
         }
+    }
+    return null;
+}
 
-        function deleteShift() {
-            if (scheduler.editingShiftIndex !== -1) {
-                scheduler.schedule[scheduler.editingDay].splice(scheduler.editingShiftIndex, 1);
-                scheduler.initCalendar();
-                toggleShiftModal();
-                showAlert('Shift deleted successfully!', 'success');
-            }
-        }
+timeToMinutes(timeString) {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    return hours * 60 + minutes;
+}
 
-        function saveSettings() {
-            const settings = {
-                startDate: document.getElementById('startDate').value,
-                startDay: parseInt(document.getElementById('startDay').value),
-                hourlyWage: parseFloat(document.getElementById('hourlyWage').value),
-                shiftHours: {
-                    day: parseFloat(document.getElementById('dayShiftHours').value),
-                    evening: parseFloat(document.getElementById('eveningShiftHours').value),
-                    night: parseFloat(document.getElementById('nightShiftHours').value),
-                    off: 0
-                },
-                shiftPremiums: {
-                    night: parseFloat(document.getElementById('nightShiftPremium').value),
-                    evening: parseFloat(document.getElementById('eveningShiftPremium').value),
-                    weekend: parseFloat(document.getElementById('weekendPremium').value),
-                    onCall: parseFloat(document.getElementById('onCallPremium').value)
-                },
-                overtimeRules: {
-                    normalDailyHours: parseFloat(document.getElementById('normalDailyHours').value),
-                    normalWeeklyHours: parseFloat(document.getElementById('normalWeeklyHours').value),
-                    ot1Rate: parseFloat(document.getElementById('ot1Rate').value),
-                    ot2Rate: parseFloat(document.getElementById('ot2Rate').value),
-                    dailyOt1Threshold: parseFloat(document.getElementById('dailyOt1Threshold').value),
-                    dailyOt2Threshold: parseFloat(document.getElementById('dailyOt2Threshold').value),
-                    minOvertimeMinutes: parseInt(document.getElementById('minOvertimeMinutes').value),
-                    weeklyOtCalculation: document.getElementById('weeklyOtCalculation').value
-                },
-                holidayRates: {
-                    regular: parseFloat(document.getElementById('holidayRate15').value),
-                    premium: parseFloat(document.getElementById('holidayRate20').value)
+minutesToTime(minutes) {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+}
+
+selectDay(day) {
+    this.currentDay = day;
+    this.initCalendar();
+}
+
+clearSchedule() {
+    this.schedule = new Array(14).fill(null).map(() => []);
+    this.currentDay = 0;
+    this.initCalendar();
+}
+
+calculatePayroll() {
+    let totalHours = 0;
+    let regularHours = 0;
+    let ot1Hours = 0; // 1.5x overtime
+    let ot2Hours = 0; // 2.0x overtime
+    let nightHours = 0;
+    let eveningHours = 0;
+    let weekendHours = 0;
+    
+    const overtimeRules = this.settings.overtimeRules;
+    const weeklyHours = [0, 0]; // Track hours for each week
+    const dailyOvertimeHours = []; // Track daily overtime for weekly calculation
+    
+    // First pass: Calculate daily hours and daily overtime
+    this.schedule.forEach((dayShifts, dayIndex) => {
+        let dailyTotal = 0;
+        let dailyRegular = 0;
+        let dailyOt1 = 0;
+        let dailyOt2 = 0;
+        
+        dayShifts.forEach((shift) => {
+            if (shift.type !== 'off') {
+                const hours = shift.hours;
+                dailyTotal += hours;
+                
+                // Check if weekend for premium calculation
+                const dayOfWeek = (this.settings.startDay + dayIndex) % 7;
+                if (dayOfWeek === 0 || dayOfWeek === 6) {
+                    weekendHours += hours;
                 }
-            };
-            
-            scheduler.saveSettings(settings);
-            toggleSettings();
-            showAlert('Settings saved successfully!', 'success');
-        }
-
-        function addShift(type) {
-            scheduler.addShift(type);
-        }
-
-        function clearSchedule() {
-            scheduler.clearSchedule();
-            document.getElementById('results').innerHTML = `
-                <div class="alert">
-                    Build your 2-week schedule by clicking shift buttons or using the + button for multiple shifts per day.
-                </div>
-            `;
-            showAlert('Schedule cleared!', 'success');
-        }
-
-        function calculatePayroll() {
-            const result = scheduler.calculatePayroll();
-            
-            // Check if there are any shifts scheduled
-            const hasShifts = scheduler.schedule.some(dayShifts => dayShifts.length > 0);
-            
-            if (!hasShifts) {
-                showAlert('Please add some shifts to your schedule first!', 'error');
-                return;
-            }
-            
-            if (result.hours.total === 0) {
-                showAlert('No working hours found in your schedule!', 'error');
-                return;
-            }
-            
-            displayPayStub(result);
-            showAlert('Payroll calculated successfully!', 'success');
-        }
-
-        function displayPayStub(result) {
-            const resultsDiv = document.getElementById('results');
-            
-            resultsDiv.innerHTML = `
-                <div class="pay-stub">
-                    <div class="pay-stub-header">
-                        <div class="pay-stub-title">PAYROLL SUMMARY</div>
-                        <div style="margin-top: 10px;">
-                            2-Week Pay Period<br>
-                            Hourly Rate: ${scheduler.formatCurrency(result.pay.hourlyRate)}
-                        </div>
-                    </div>
-
-                    <div style="margin-bottom: 15px;">
-                        <h4 style="color: #34495e; margin-bottom: 10px;">HOURS WORKED</h4>
-                        <div class="pay-row">
-                            <span>Regular Hours:</span>
-                            <span>${result.hours.regular.toFixed(2)}</span>
-                        </div>
-                        <div class="pay-row">
-                            <span>OT1 Hours (${scheduler.settings.overtimeRules.ot1Rate}x):</span>
-                            <span>${result.hours.ot1.toFixed(2)}</span>
-                        </div>
-                        <div class="pay-row">
-                            <span>OT2 Hours (${scheduler.settings.overtimeRules.ot2Rate}x):</span>
-                            <span>${result.hours.ot2.toFixed(2)}</span>
-                        </div>
-                        <div class="pay-row total">
-                            <span>Total Hours:</span>
-                            <span>${result.hours.total.toFixed(2)}</span>
-                        </div>
-                    </div>
-
-                    <div style="margin-bottom: 15px;">
-                        <h4 style="color: #34495e; margin-bottom: 10px;">PREMIUM HOURS</h4>
-                        <div class="pay-row">
-                            <span>Night Shift Hours:</span>
-                            <span>${result.hours.night.toFixed(2)}</span>
-                        </div>
-                        <div class="pay-row">
-                            <span>Evening Shift Hours:</span>
-                            <span>${result.hours.evening.toFixed(2)}</span>
-                        </div>
-                        <div class="pay-row">
-                            <span>Weekend Hours:</span>
-                            <span>${result.hours.weekend.toFixed(2)}</span>
-                        </div>
-                    </div>
-
-                    <div style="margin-bottom: 15px;">
-                        <h4 style="color: #34495e; margin-bottom: 10px;">EARNINGS</h4>
-                        <div class="pay-row">
-                            <span>Regular Pay:</span>
-                            <span>${scheduler.formatCurrency(result.pay.regular)}</span>
-                        </div>
-                        <div class="pay-row">
-                            <span>OT1 Pay (${scheduler.settings.overtimeRules.ot1Rate}x):</span>
-                            <span>${scheduler.formatCurrency(result.pay.ot1)}</span>
-                        </div>
-                        <div class="pay-row">
-                            <span>OT2 Pay (${scheduler.settings.overtimeRules.ot2Rate}x):</span>
-                            <span>${scheduler.formatCurrency(result.pay.ot2)}</span>
-                        </div>
-                        <div class="pay-row">
-                            <span>Night Premium:</span>
-                            <span>${scheduler.formatCurrency(result.pay.nightPremium)}</span>
-                        </div>
-                        <div class="pay-row">
-                            <span>Evening Premium:</span>
-                            <span>${scheduler.formatCurrency(result.pay.eveningPremium)}</span>
-                        </div>
-                        <div class="pay-row">
-                            <span>Weekend Premium:</span>
-                            <span>${scheduler.formatCurrency(result.pay.weekendPremium)}</span>
-                        </div>
-                    </div>
-
-                    <div class="pay-row gross-pay">
-                        <span><strong>GROSS PAY:</strong></span>
-                        <span><strong>${scheduler.formatCurrency(result.pay.gross)}</strong></span>
-                    </div>
-                </div>
-            `;
-        }
-
-        function showAlert(message, type = 'info') {
-            // Remove existing alerts
-            const existingAlerts = document.querySelectorAll('.temp-alert');
-            existingAlerts.forEach(alert => alert.remove());
-
-            // Create new alert
-            const alertDiv = document.createElement('div');
-            alertDiv.className = `alert ${type} temp-alert`;
-            alertDiv.textContent = message;
-            alertDiv.style.position = 'fixed';
-            alertDiv.style.top = '20px';
-            alertDiv.style.right = '20px';
-            alertDiv.style.zIndex = '2000';
-            alertDiv.style.maxWidth = '300px';
-
-            document.body.appendChild(alertDiv);
-
-            // Remove alert after 3 seconds
-            setTimeout(() => {
-                alertDiv.remove();
-            }, 3000);
-        }
-
-        // Set default start date to today
-        document.getElementById('startDate').value = new Date().toISOString().split('T')[0];
-
-        // Auto-update hours when shift type changes
-        document.getElementById('shiftType').addEventListener('change', function() {
-            const type = this.value;
-            const hoursInput = document.getElementById('shiftHours');
-            if (scheduler && scheduler.settings && scheduler.settings.shiftHours[type] !== undefined) {
-                hoursInput.value = scheduler.settings.shiftHours[type];
+                
+                // Track shift types for premiums
+                if (shift.type === 'night') {
+                    nightHours += hours;
+                } else if (shift.type === 'evening') {
+                    eveningHours += hours;
+                }
             }
         });
-    </script>
+        
+        // Apply daily overtime rules per collective agreement
+        if (dailyTotal > overtimeRules.dailyOt2Threshold) {
+            // Hours over 12 are OT2 (2.0x)
+            dailyOt2 = dailyTotal - overtimeRules.dailyOt2Threshold;
+            dailyOt1 = Math.min(4, overtimeRules.dailyOt2Threshold - overtimeRules.dailyOt1Threshold);
+            dailyRegular = overtimeRules.dailyOt1Threshold;
+        } else if (dailyTotal > overtimeRules.dailyOt1Threshold) {
+            // Hours over 8 (up to 12) are OT1 (1.5x), max 4 hours
+            dailyOt1 = Math.min(4, dailyTotal - overtimeRules.dailyOt1Threshold);
+            dailyRegular = Math.min(dailyTotal, overtimeRules.dailyOt1Threshold);
+        } else {
+            // All hours are regular
+            dailyRegular = dailyTotal;
+        }
+        
+        // Apply minimum overtime rule (15 minutes)
+        const minOtHours = overtimeRules.minOvertimeMinutes / 60;
+        if (dailyOt1 > 0 && dailyOt1 < minOtHours) {
+            dailyRegular += dailyOt1;
+            dailyOt1 = 0;
+        }
+        if (dailyOt2 > 0 && dailyOt2 < minOtHours) {
+            dailyOt1 += dailyOt2;
+            dailyOt2 = 0;
+        }
+        
+        // Track weekly totals
+        const week = Math.floor(dayIndex / 7);
+        weeklyHours[week] += dailyTotal;
+        
+        // Accumulate totals
+        regularHours += dailyRegular;
+        ot1Hours += dailyOt1;
+        ot2Hours += dailyOt2;
+        
+        dailyOvertimeHours.push({
+            regular: dailyRegular,
+            ot1: dailyOt1,
+            ot2: dailyOt2,
+            total: dailyTotal
+        });
+    });
+    
+    // Handle weekly overtime if using collective agreement method
+    if (overtimeRules.weeklyOtCalculation === 'collective') {
+        // Per collective agreement: weekly OT is calculated AFTER daily OT is accounted for
+        weeklyHours.forEach((weekTotal, weekIndex) => {
+            if (weekTotal > overtimeRules.normalWeeklyHours) {
+                // Calculate how much weekly overtime we have beyond daily OT
+                let weeklyRegularUsed = 0;
+                let weeklyOt1Used = 0;
+                
+                // Sum up the daily regular and OT1 hours for this week
+                for (let day = 0; day < 7; day++) {
+                    const dayIndex = weekIndex * 7 + day;
+                    if (dayIndex < dailyOvertimeHours.length) {
+                        weeklyRegularUsed += dailyOvertimeHours[dayIndex].regular;
+                        weeklyOt1Used += dailyOvertimeHours[dayIndex].ot1;
+                    }
+                }
+                
+                // If we have regular hours that push us over 40, convert them to OT1
+                if (weeklyRegularUsed > overtimeRules.normalWeeklyHours) {
+                    const excessRegular = weeklyRegularUsed - overtimeRules.normalWeeklyHours;
+                    regularHours -= excessRegular;
+                    ot1Hours += excessRegular;
+                }
+            }
+        });
+    }
+    
+    totalHours = regularHours + ot1Hours + ot2Hours;
+    
+    // Calculate pay
+    const hourlyRate = this.settings.hourlyWage;
+    const regularPay = regularHours * hourlyRate;
+    const ot1Pay = ot1Hours * hourlyRate * overtimeRules.ot1Rate;
+    const ot2Pay = ot2Hours * hourlyRate * overtimeRules.ot2Rate;
+    
+    // Calculate premiums
+    const nightPremium = nightHours * this.settings.shiftPremiums.night;
+    const eveningPremium = eveningHours * this.settings.shiftPremiums.evening;
+    const weekendPremium = weekendHours * this.settings.shiftPremiums.weekend;
+    
+    const totalPremiums = nightPremium + eveningPremium + weekendPremium;
+    const grossPay = regularPay + ot1Pay + ot2Pay + totalPremiums;
+    
+    return {
+        hours: {
+            total: totalHours,
+            regular: regularHours,
+            ot1: ot1Hours,
+            ot2: ot2Hours,
+            night: nightHours,
+            evening: eveningHours,
+            weekend: weekendHours
+        },
+        pay: {
+            hourlyRate: hourlyRate,
+            regular: regularPay,
+            ot1: ot1Pay,
+            ot2: ot2Pay,
+            nightPremium: nightPremium,
+            eveningPremium: eveningPremium,
+            weekendPremium: weekendPremium,
+            totalPremiums: totalPremiums,
+            gross: grossPay
+        }
+    };
+}
+
+formatCurrency(amount) {
+    return new Intl.NumberFormat('en-CA', {
+        style: 'currency',
+        currency: 'CAD'
+    }).format(amount);
+}
+}
+
+// Initialize scheduler
+const scheduler = new ShiftScheduler();
+
+function toggleSettings() {
+const modal = document.getElementById('settingsModal');
+modal.classList.toggle('active');
+}
+
+function toggleShiftModal() {
+const modal = document.getElementById('shiftModal');
+modal.classList.toggle('active');
+}
+
+function saveShift() {
+const type = document.getElementById('shiftType').value;
+const hours = parseFloat(document.getElementById('shiftHours').value);
+const startTime = document.getElementById('startTime').value;
+const note = document.getElementById('shiftNote').value;
+
+if (hours < 0 || hours > 24) {
+    showAlert('Hours must be between 0 and 24!', 'error');
+    return;
+}
+
+const shift = {
+    type: type,
+    hours: hours,
+    startTime: startTime,
+    note: note
+};
+
+// Check for overlaps if validation is enabled
+if (scheduler.settings.validateOverlaps && type !== 'off') {
+    const dayShifts = scheduler.schedule[scheduler.editingDay];
+    const overlap = scheduler.checkShiftOverlaps(dayShifts, shift, scheduler.editingShiftIndex);
+    
+    if (overlap) {
+        const overlappingShift = overlap.overlappingShift;
+        const conflictTime = `${overlappingShift.startTime || '00:00'} (${overlappingShift.hours}h)`;
+        showAlert(`Shift overlaps with existing ${overlappingShift.type} shift at ${conflictTime}`, 'error');
+        return;
+    }
+}
+
+if (scheduler.editingShiftIndex === -1) {
+    // Adding new shift
+    scheduler.schedule[scheduler.editingDay].push(shift);
+    showAlert('Shift added successfully!', 'success');
+} else {
+    // Editing existing shift
+    scheduler.schedule[scheduler.editingDay][scheduler.editingShiftIndex] = shift;
+    showAlert('Shift updated successfully!', 'success');
+}
+
+scheduler.initCalendar();
+toggleShiftModal();
+}
+
+function deleteShift() {
+if (scheduler.editingShiftIndex !== -1) {
+    scheduler.schedule[scheduler.editingDay].splice(scheduler.editingShiftIndex, 1);
+    scheduler.initCalendar();
+    toggleShiftModal();
+    showAlert('Shift deleted successfully!', 'success');
+}
+}
+
+function saveSettings() {
+const settings = {
+    startDate: document.getElementById('startDate').value,
+    startDay: parseInt(document.getElementById('startDay').value),
+    hourlyWage: parseFloat(document.getElementById('hourlyWage').value),
+    employmentStatus: document.getElementById('employmentStatus').value,
+    validateOverlaps: document.getElementById('validateOverlaps').value === 'true',
+    previousPeriod1Hours: parseFloat(document.getElementById('previousPeriod1Hours').value),
+    previousPeriod2Hours: parseFloat(document.getElementById('previousPeriod2Hours').value),
+    shiftHours: {
+        day: parseFloat(document.getElementById('dayShiftHours').value),
+        evening: parseFloat(document.getElementById('eveningShiftHours').value),
+        night: parseFloat(document.getElementById('nightShiftHours').value),
+        off: 0
+    },
+    defaultStartTimes: scheduler.settings.defaultStartTimes, // Keep existing start times
+    shiftPremiums: {
+        night: parseFloat(document.getElementById('nightShiftPremium').value),
+        evening: parseFloat(document.getElementById('eveningShiftPremium').value),
+        weekend: parseFloat(document.getElementById('weekendPremium').value),
+        onCall: parseFloat(document.getElementById('onCallPremium').value)
+    },
+    overtimeRules: {
+        normalDailyHours: parseFloat(document.getElementById('normalDailyHours').value),
+        normalWeeklyHours: parseFloat(document.getElementById('normalWeeklyHours').value),
+        ot1Rate: parseFloat(document.getElementById('ot1Rate').value),
+        ot2Rate: parseFloat(document.getElementById('ot2Rate').value),
+        dailyOt1Threshold: parseFloat(document.getElementById('dailyOt1Threshold').value),
+        dailyOt2Threshold: parseFloat(document.getElementById('dailyOt2Threshold').value),
+        minOvertimeMinutes: parseInt(document.getElementById('minOvertimeMinutes').value),
+        weeklyOtCalculation: document.getElementById('weeklyOtCalculation').value
+    },
+    holidayRates: {
+        regular: parseFloat(document.getElementById('holidayRate15').value),
+        premium: parseFloat(document.getElementById('holidayRate20').value)
+    }
+};
+
+scheduler.saveSettings(settings);
+toggleSettings();
+showAlert('Settings saved successfully!', 'success');
+}
+
+function addShift(type) {
+scheduler.addShift(type);
+}
+
+function clearSchedule() {
+scheduler.clearSchedule();
+document.getElementById('results').innerHTML = `
+    <div class="alert">
+        Build your 2-week schedule by clicking shift buttons or using the + button for multiple shifts per day.
+    </div>
+`;
+showAlert('Schedule cleared!', 'success');
+}
+
+function calculatePayroll() {
+const result = scheduler.calculatePayroll();
+
+// Check if there are any shifts scheduled
+const hasShifts = scheduler.schedule.some(dayShifts => dayShifts.length > 0);
+
+if (!hasShifts) {
+    showAlert('Please add some shifts to your schedule first!', 'error');
+    return;
+}
+
+if (result.hours.total === 0) {
+    showAlert('No working hours found in your schedule!', 'error');
+    return;
+}
+
+displayPayStub(result);
+showAlert('Payroll calculated successfully!', 'success');
+}
+
+function displayPayStub(result) {
+const resultsDiv = document.getElementById('results');
+
+resultsDiv.innerHTML = `
+    <div class="pay-stub">
+        <div class="pay-stub-header">
+            <div class="pay-stub-title">PAYROLL SUMMARY</div>
+            <div style="margin-top: 10px;">
+                2-Week Pay Period<br>
+                Hourly Rate: ${scheduler.formatCurrency(result.pay.hourlyRate)}
+            </div>
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <h4 style="color: #34495e; margin-bottom: 10px;">HOURS WORKED</h4>
+            <div class="pay-row">
+                <span>Regular Hours:</span>
+                <span>${result.hours.regular.toFixed(2)}</span>
+            </div>
+            <div class="pay-row">
+                <span>OT1 Hours (${scheduler.settings.overtimeRules.ot1Rate}x):</span>
+                <span>${result.hours.ot1.toFixed(2)}</span>
+            </div>
+            <div class="pay-row">
+                <span>OT2 Hours (${scheduler.settings.overtimeRules.ot2Rate}x):</span>
+                <span>${result.hours.ot2.toFixed(2)}</span>
+            </div>
+            <div class="pay-row total">
+                <span>Total Hours:</span>
+                <span>${result.hours.total.toFixed(2)}</span>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <h4 style="color: #34495e; margin-bottom: 10px;">PREMIUM HOURS</h4>
+            <div class="pay-row">
+                <span>Night Shift Hours:</span>
+                <span>${result.hours.night.toFixed(2)}</span>
+            </div>
+            <div class="pay-row">
+                <span>Evening Shift Hours:</span>
+                <span>${result.hours.evening.toFixed(2)}</span>
+            </div>
+            <div class="pay-row">
+                <span>Weekend Hours:</span>
+                <span>${result.hours.weekend.toFixed(2)}</span>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <h4 style="color: #34495e; margin-bottom: 10px;">EARNINGS</h4>
+            <div class="pay-row">
+                <span>Regular Pay:</span>
+                <span>${scheduler.formatCurrency(result.pay.regular)}</span>
+            </div>
+            <div class="pay-row">
+                <span>OT1 Pay (${scheduler.settings.overtimeRules.ot1Rate}x):</span>
+                <span>${scheduler.formatCurrency(result.pay.ot1)}</span>
+            </div>
+            <div class="pay-row">
+                <span>OT2 Pay (${scheduler.settings.overtimeRules.ot2Rate}x):</span>
+                <span>${scheduler.formatCurrency(result.pay.ot2)}</span>
+            </div>
+            <div class="pay-row">
+                <span>Night Premium:</span>
+                <span>${scheduler.formatCurrency(result.pay.nightPremium)}</span>
+            </div>
+            <div class="pay-row">
+                <span>Evening Premium:</span>
+                <span>${scheduler.formatCurrency(result.pay.eveningPremium)}</span>
+            </div>
+            <div class="pay-row">
+                <span>Weekend Premium:</span>
+                <span>${scheduler.formatCurrency(result.pay.weekendPremium)}</span>
+            </div>
+        </div>
+
+        <div class="pay-row gross-pay">
+            <span><strong>GROSS PAY:</strong></span>
+            <span><strong>${scheduler.formatCurrency(result.pay.gross)}</strong></span>
+        </div>
+    </div>
+`;
+}
+
+function showAlert(message, type = 'info') {
+// Remove existing alerts
+const existingAlerts = document.querySelectorAll('.temp-alert');
+existingAlerts.forEach(alert => alert.remove());
+
+// Create new alert
+const alertDiv = document.createElement('div');
+alertDiv.className = `alert ${type} temp-alert`;
+alertDiv.textContent = message;
+alertDiv.style.position = 'fixed';
+alertDiv.style.top = '20px';
+alertDiv.style.right = '20px';
+alertDiv.style.zIndex = '2000';
+alertDiv.style.maxWidth = '300px';
+
+document.body.appendChild(alertDiv);
+
+// Remove alert after 3 seconds
+setTimeout(() => {
+    alertDiv.remove();
+}, 3000);
+}
+
+// Set default start date to today
+document.getElementById('startDate').value = new Date().toISOString().split('T')[0];
+
+// Auto-update hours when shift type changes
+document.getElementById('shiftType').addEventListener('change', function() {
+const type = this.value;
+const hoursInput = document.getElementById('shiftHours');
+const startTimeInput = document.getElementById('startTime');
+if (scheduler && scheduler.settings && scheduler.settings.shiftHours[type] !== undefined) {
+    hoursInput.value = scheduler.settings.shiftHours[type];
+    startTimeInput.value = scheduler.settings.defaultStartTimes[type] || '07:00';
+}
+});
+
+// Show/hide part-time section based on employment status
+document.getElementById('employmentStatus').addEventListener('change', function() {
+const partTimeSection = document.getElementById('partTimeSection');
+if (this.value === 'part-time' || this.value === 'casual') {
+    partTimeSection.style.display = 'block';
+} else {
+    partTimeSection.style.display = 'none';
+}
+});
+</script>
 </body>
 </html><div class="pay-row">
-                            <span>Night Premium:</span>
-                            <span>${scheduler.formatCurrency(result.pay.nightPremium)}</span>
-                        </div>
-                        <div class="pay-row">
-                            <span>Evening Premium:</span>
-                            <span>${scheduler.formatCurrency(result.pay.eveningPremium)}</span>
-                        </div>
-                        <div class="pay-row">
-                            <span>Weekend Premium:</span>
-                            <span>${scheduler.formatCurrency(result.pay.weekendPremium)}</span>
-                        </div>
-                    </div>
+                <span>Night Premium:</span>
+                <span>${scheduler.formatCurrency(result.pay.nightPremium)}</span>
+            </div>
+            <div class="pay-row">
+                <span>Evening Premium:</span>
+                <span>${scheduler.formatCurrency(result.pay.eveningPremium)}</span>
+            </div>
+            <div class="pay-row">
+                <span>Weekend Premium:</span>
+                <span>${scheduler.formatCurrency(result.pay.weekendPremium)}</span>
+            </div>
+        </div>
 
-                    <div class="pay-row gross-pay">
-                        <span><strong>GROSS PAY:</strong></span>
-                        <span><strong>${scheduler.formatCurrency(result.pay.gross)}</strong></span>
-                    </div>
-                </div>
-            `;
-        }
+        <div class="pay-row gross-pay">
+            <span><strong>GROSS PAY:</strong></span>
+            <span><strong>${scheduler.formatCurrency(result.pay.gross)}</strong></span>
+        </div>
+    </div>
+`;
+}
 
-        function showAlert(message, type = 'info') {
-            // Remove existing alerts
-            const existingAlerts = document.querySelectorAll('.temp-alert');
-            existingAlerts.forEach(alert => alert.remove());
+function showAlert(message, type = 'info') {
+// Remove existing alerts
+const existingAlerts = document.querySelectorAll('.temp-alert');
+existingAlerts.forEach(alert => alert.remove());
 
-            // Create new alert
-            const alertDiv = document.createElement('div');
-            alertDiv.className = `alert ${type} temp-alert`;
-            alertDiv.textContent = message;
-            alertDiv.style.position = 'fixed';
-            alertDiv.style.top = '20px';
-            alertDiv.style.right = '20px';
-            alertDiv.style.zIndex = '2000';
-            alertDiv.style.maxWidth = '300px';
+// Create new alert
+const alertDiv = document.createElement('div');
+alertDiv.className = `alert ${type} temp-alert`;
+alertDiv.textContent = message;
+alertDiv.style.position = 'fixed';
+alertDiv.style.top = '20px';
+alertDiv.style.right = '20px';
+alertDiv.style.zIndex = '2000';
+alertDiv.style.maxWidth = '300px';
 
-            document.body.appendChild(alertDiv);
+document.body.appendChild(alertDiv);
 
-            // Remove alert after 3 seconds
-            setTimeout(() => {
-                alertDiv.remove();
-            }, 3000);
-        }
+// Remove alert after 3 seconds
+setTimeout(() => {
+    alertDiv.remove();
+}, 3000);
+}
 
-        // Set default start date to today
-        document.getElementById('startDate').value = new Date().toISOString().split('T')[0];
+// Set default start date to today
+document.getElementById('startDate').value = new Date().toISOString().split('T')[0];
 
-        // Auto-update hours when shift type changes
-        document.getElementById('shiftType').addEventListener('change', function() {
-            const type = this.value;
-            const hoursInput = document.getElementById('shiftHours');
-            if (scheduler && scheduler.settings && scheduler.settings.shiftHours[type] !== undefined) {
-                hoursInput.value = scheduler.settings.shiftHours[type];
-            }
-        });
-    </script>
+// Auto-update hours when shift type changes
+document.getElementById('shiftType').addEventListener('change', function() {
+const type = this.value;
+const hoursInput = document.getElementById('shiftHours');
+if (scheduler && scheduler.settings && scheduler.settings.shiftHours[type] !== undefined) {
+    hoursInput.value = scheduler.settings.shiftHours[type];
+}
+});
+</script>
 </body>
 </html>
