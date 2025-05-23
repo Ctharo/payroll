@@ -580,7 +580,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="hourlyWage">Hourly Rate ($)</label>
-                        <input type="number" id="hourlyWage" step="0.01" value="25.00">
+                        <input type="number" id="hourlyWage" step="0.01" value="35.00">
                     </div>
                 </div>
             </div>
@@ -625,6 +625,56 @@
                     <div class="form-group">
                         <label for="onCallPremium">On-Call Premium</label>
                         <input type="number" id="onCallPremium" step="0.01" value="3.00">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <h3>Overtime Settings</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="normalDailyHours">Normal Daily Hours</label>
+                        <input type="number" id="normalDailyHours" step="0.5" value="8" min="1" max="24">
+                    </div>
+                    <div class="form-group">
+                        <label for="normalWeeklyHours">Normal Weekly Hours</label>
+                        <input type="number" id="normalWeeklyHours" step="0.5" value="40" min="1" max="168">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="ot1Rate">OT1 Rate (1.5x threshold)</label>
+                        <input type="number" id="ot1Rate" step="0.1" value="1.5" min="1" max="3">
+                    </div>
+                    <div class="form-group">
+                        <label for="ot2Rate">OT2 Rate (2.0x threshold)</label>
+                        <input type="number" id="ot2Rate" step="0.1" value="2.0" min="1" max="5">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="dailyOt1Threshold">Daily OT1 After Hours</label>
+                        <input type="number" id="dailyOt1Threshold" step="0.5" value="8" min="1" max="24">
+                        <small style="color: #666; font-size: 12px;">First 4 hours after normal daily hours at 1.5x</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="dailyOt2Threshold">Daily OT2 After Hours</label>
+                        <input type="number" id="dailyOt2Threshold" step="0.5" value="12" min="1" max="24">
+                        <small style="color: #666; font-size: 12px;">All hours after 12 hours per day at 2.0x</small>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="minOvertimeMinutes">Minimum OT Minutes</label>
+                        <input type="number" id="minOvertimeMinutes" step="5" value="15" min="0" max="60">
+                        <small style="color: #666; font-size: 12px;">Minimum minutes to qualify for overtime pay</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="weeklyOtCalculation">Weekly OT Calculation</label>
+                        <select id="weeklyOtCalculation">
+                            <option value="standard">Standard (40h/week)</option>
+                            <option value="collective">Collective Agreement (after daily OT)</option>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -706,6 +756,16 @@
                         weekend: 2.00,
                         onCall: 3.00
                     },
+                    overtimeRules: {
+                        normalDailyHours: 8,
+                        normalWeeklyHours: 40,
+                        ot1Rate: 1.5,
+                        ot2Rate: 2.0,
+                        dailyOt1Threshold: 8, // OT1 starts after 8 hours
+                        dailyOt2Threshold: 12, // OT2 starts after 12 hours
+                        minOvertimeMinutes: 15,
+                        weeklyOtCalculation: 'collective' // 'standard' or 'collective'
+                    },
                     holidayRates: {
                         regular: 1.5,
                         premium: 2.0
@@ -744,6 +804,17 @@
                 document.getElementById('eveningShiftPremium').value = this.settings.shiftPremiums.evening;
                 document.getElementById('weekendPremium').value = this.settings.shiftPremiums.weekend;
                 document.getElementById('onCallPremium').value = this.settings.shiftPremiums.onCall;
+                
+                // Overtime settings
+                document.getElementById('normalDailyHours').value = this.settings.overtimeRules.normalDailyHours;
+                document.getElementById('normalWeeklyHours').value = this.settings.overtimeRules.normalWeeklyHours;
+                document.getElementById('ot1Rate').value = this.settings.overtimeRules.ot1Rate;
+                document.getElementById('ot2Rate').value = this.settings.overtimeRules.ot2Rate;
+                document.getElementById('dailyOt1Threshold').value = this.settings.overtimeRules.dailyOt1Threshold;
+                document.getElementById('dailyOt2Threshold').value = this.settings.overtimeRules.dailyOt2Threshold;
+                document.getElementById('minOvertimeMinutes').value = this.settings.overtimeRules.minOvertimeMinutes;
+                document.getElementById('weeklyOtCalculation').value = this.settings.overtimeRules.weeklyOtCalculation;
+                
                 document.getElementById('holidayRate15').value = this.settings.holidayRates.regular;
                 document.getElementById('holidayRate20').value = this.settings.holidayRates.premium;
             }
@@ -909,28 +980,35 @@
             calculatePayroll() {
                 let totalHours = 0;
                 let regularHours = 0;
-                let overtimeHours = 0;
+                let ot1Hours = 0; // 1.5x overtime
+                let ot2Hours = 0; // 2.0x overtime
                 let nightHours = 0;
                 let eveningHours = 0;
                 let weekendHours = 0;
                 
-                // Calculate hours by shift type
+                const overtimeRules = this.settings.overtimeRules;
                 const weeklyHours = [0, 0]; // Track hours for each week
+                const dailyOvertimeHours = []; // Track daily overtime for weekly calculation
                 
+                // First pass: Calculate daily hours and daily overtime
                 this.schedule.forEach((dayShifts, dayIndex) => {
+                    let dailyTotal = 0;
+                    let dailyRegular = 0;
+                    let dailyOt1 = 0;
+                    let dailyOt2 = 0;
+                    
                     dayShifts.forEach((shift) => {
                         if (shift.type !== 'off') {
                             const hours = shift.hours;
-                            const week = Math.floor(dayIndex / 7);
-                            weeklyHours[week] += hours;
+                            dailyTotal += hours;
                             
-                            // Check if weekend (Saturday = 6, Sunday = 0)
+                            // Check if weekend for premium calculation
                             const dayOfWeek = (this.settings.startDay + dayIndex) % 7;
                             if (dayOfWeek === 0 || dayOfWeek === 6) {
                                 weekendHours += hours;
                             }
                             
-                            // Track shift types
+                            // Track shift types for premiums
                             if (shift.type === 'night') {
                                 nightHours += hours;
                             } else if (shift.type === 'evening') {
@@ -938,24 +1016,85 @@
                             }
                         }
                     });
-                });
-                
-                // Calculate overtime for each week
-                weeklyHours.forEach(hours => {
-                    if (hours > 40) {
-                        overtimeHours += hours - 40;
-                        regularHours += 40;
+                    
+                    // Apply daily overtime rules per collective agreement
+                    if (dailyTotal > overtimeRules.dailyOt2Threshold) {
+                        // Hours over 12 are OT2 (2.0x)
+                        dailyOt2 = dailyTotal - overtimeRules.dailyOt2Threshold;
+                        dailyOt1 = Math.min(4, overtimeRules.dailyOt2Threshold - overtimeRules.dailyOt1Threshold);
+                        dailyRegular = overtimeRules.dailyOt1Threshold;
+                    } else if (dailyTotal > overtimeRules.dailyOt1Threshold) {
+                        // Hours over 8 (up to 12) are OT1 (1.5x), max 4 hours
+                        dailyOt1 = Math.min(4, dailyTotal - overtimeRules.dailyOt1Threshold);
+                        dailyRegular = Math.min(dailyTotal, overtimeRules.dailyOt1Threshold);
                     } else {
-                        regularHours += hours;
+                        // All hours are regular
+                        dailyRegular = dailyTotal;
                     }
+                    
+                    // Apply minimum overtime rule (15 minutes)
+                    const minOtHours = overtimeRules.minOvertimeMinutes / 60;
+                    if (dailyOt1 > 0 && dailyOt1 < minOtHours) {
+                        dailyRegular += dailyOt1;
+                        dailyOt1 = 0;
+                    }
+                    if (dailyOt2 > 0 && dailyOt2 < minOtHours) {
+                        dailyOt1 += dailyOt2;
+                        dailyOt2 = 0;
+                    }
+                    
+                    // Track weekly totals
+                    const week = Math.floor(dayIndex / 7);
+                    weeklyHours[week] += dailyTotal;
+                    
+                    // Accumulate totals
+                    regularHours += dailyRegular;
+                    ot1Hours += dailyOt1;
+                    ot2Hours += dailyOt2;
+                    
+                    dailyOvertimeHours.push({
+                        regular: dailyRegular,
+                        ot1: dailyOt1,
+                        ot2: dailyOt2,
+                        total: dailyTotal
+                    });
                 });
                 
-                totalHours = regularHours + overtimeHours;
+                // Handle weekly overtime if using collective agreement method
+                if (overtimeRules.weeklyOtCalculation === 'collective') {
+                    // Per collective agreement: weekly OT is calculated AFTER daily OT is accounted for
+                    weeklyHours.forEach((weekTotal, weekIndex) => {
+                        if (weekTotal > overtimeRules.normalWeeklyHours) {
+                            // Calculate how much weekly overtime we have beyond daily OT
+                            let weeklyRegularUsed = 0;
+                            let weeklyOt1Used = 0;
+                            
+                            // Sum up the daily regular and OT1 hours for this week
+                            for (let day = 0; day < 7; day++) {
+                                const dayIndex = weekIndex * 7 + day;
+                                if (dayIndex < dailyOvertimeHours.length) {
+                                    weeklyRegularUsed += dailyOvertimeHours[dayIndex].regular;
+                                    weeklyOt1Used += dailyOvertimeHours[dayIndex].ot1;
+                                }
+                            }
+                            
+                            // If we have regular hours that push us over 40, convert them to OT1
+                            if (weeklyRegularUsed > overtimeRules.normalWeeklyHours) {
+                                const excessRegular = weeklyRegularUsed - overtimeRules.normalWeeklyHours;
+                                regularHours -= excessRegular;
+                                ot1Hours += excessRegular;
+                            }
+                        }
+                    });
+                }
+                
+                totalHours = regularHours + ot1Hours + ot2Hours;
                 
                 // Calculate pay
                 const hourlyRate = this.settings.hourlyWage;
                 const regularPay = regularHours * hourlyRate;
-                const overtimePay = overtimeHours * hourlyRate * 1.5;
+                const ot1Pay = ot1Hours * hourlyRate * overtimeRules.ot1Rate;
+                const ot2Pay = ot2Hours * hourlyRate * overtimeRules.ot2Rate;
                 
                 // Calculate premiums
                 const nightPremium = nightHours * this.settings.shiftPremiums.night;
@@ -963,13 +1102,14 @@
                 const weekendPremium = weekendHours * this.settings.shiftPremiums.weekend;
                 
                 const totalPremiums = nightPremium + eveningPremium + weekendPremium;
-                const grossPay = regularPay + overtimePay + totalPremiums;
+                const grossPay = regularPay + ot1Pay + ot2Pay + totalPremiums;
                 
                 return {
                     hours: {
                         total: totalHours,
                         regular: regularHours,
-                        overtime: overtimeHours,
+                        ot1: ot1Hours,
+                        ot2: ot2Hours,
                         night: nightHours,
                         evening: eveningHours,
                         weekend: weekendHours
@@ -977,7 +1117,8 @@
                     pay: {
                         hourlyRate: hourlyRate,
                         regular: regularPay,
-                        overtime: overtimePay,
+                        ot1: ot1Pay,
+                        ot2: ot2Pay,
                         nightPremium: nightPremium,
                         eveningPremium: eveningPremium,
                         weekendPremium: weekendPremium,
@@ -1064,6 +1205,16 @@
                     weekend: parseFloat(document.getElementById('weekendPremium').value),
                     onCall: parseFloat(document.getElementById('onCallPremium').value)
                 },
+                overtimeRules: {
+                    normalDailyHours: parseFloat(document.getElementById('normalDailyHours').value),
+                    normalWeeklyHours: parseFloat(document.getElementById('normalWeeklyHours').value),
+                    ot1Rate: parseFloat(document.getElementById('ot1Rate').value),
+                    ot2Rate: parseFloat(document.getElementById('ot2Rate').value),
+                    dailyOt1Threshold: parseFloat(document.getElementById('dailyOt1Threshold').value),
+                    dailyOt2Threshold: parseFloat(document.getElementById('dailyOt2Threshold').value),
+                    minOvertimeMinutes: parseInt(document.getElementById('minOvertimeMinutes').value),
+                    weeklyOtCalculation: document.getElementById('weeklyOtCalculation').value
+                },
                 holidayRates: {
                     regular: parseFloat(document.getElementById('holidayRate15').value),
                     premium: parseFloat(document.getElementById('holidayRate20').value)
@@ -1126,15 +1277,19 @@
                         <h4 style="color: #34495e; margin-bottom: 10px;">HOURS WORKED</h4>
                         <div class="pay-row">
                             <span>Regular Hours:</span>
-                            <span>${result.hours.regular.toFixed(1)}</span>
+                            <span>${result.hours.regular.toFixed(2)}</span>
                         </div>
                         <div class="pay-row">
-                            <span>Overtime Hours (1.5x):</span>
-                            <span>${result.hours.overtime.toFixed(1)}</span>
+                            <span>OT1 Hours (${scheduler.settings.overtimeRules.ot1Rate}x):</span>
+                            <span>${result.hours.ot1.toFixed(2)}</span>
+                        </div>
+                        <div class="pay-row">
+                            <span>OT2 Hours (${scheduler.settings.overtimeRules.ot2Rate}x):</span>
+                            <span>${result.hours.ot2.toFixed(2)}</span>
                         </div>
                         <div class="pay-row total">
                             <span>Total Hours:</span>
-                            <span>${result.hours.total.toFixed(1)}</span>
+                            <span>${result.hours.total.toFixed(2)}</span>
                         </div>
                     </div>
 
@@ -1142,15 +1297,15 @@
                         <h4 style="color: #34495e; margin-bottom: 10px;">PREMIUM HOURS</h4>
                         <div class="pay-row">
                             <span>Night Shift Hours:</span>
-                            <span>${result.hours.night.toFixed(1)}</span>
+                            <span>${result.hours.night.toFixed(2)}</span>
                         </div>
                         <div class="pay-row">
                             <span>Evening Shift Hours:</span>
-                            <span>${result.hours.evening.toFixed(1)}</span>
+                            <span>${result.hours.evening.toFixed(2)}</span>
                         </div>
                         <div class="pay-row">
                             <span>Weekend Hours:</span>
-                            <span>${result.hours.weekend.toFixed(1)}</span>
+                            <span>${result.hours.weekend.toFixed(2)}</span>
                         </div>
                     </div>
 
@@ -1161,10 +1316,72 @@
                             <span>${scheduler.formatCurrency(result.pay.regular)}</span>
                         </div>
                         <div class="pay-row">
-                            <span>Overtime Pay:</span>
-                            <span>${scheduler.formatCurrency(result.pay.overtime)}</span>
+                            <span>OT1 Pay (${scheduler.settings.overtimeRules.ot1Rate}x):</span>
+                            <span>${scheduler.formatCurrency(result.pay.ot1)}</span>
                         </div>
                         <div class="pay-row">
+                            <span>OT2 Pay (${scheduler.settings.overtimeRules.ot2Rate}x):</span>
+                            <span>${scheduler.formatCurrency(result.pay.ot2)}</span>
+                        </div>
+                        <div class="pay-row">
+                            <span>Night Premium:</span>
+                            <span>${scheduler.formatCurrency(result.pay.nightPremium)}</span>
+                        </div>
+                        <div class="pay-row">
+                            <span>Evening Premium:</span>
+                            <span>${scheduler.formatCurrency(result.pay.eveningPremium)}</span>
+                        </div>
+                        <div class="pay-row">
+                            <span>Weekend Premium:</span>
+                            <span>${scheduler.formatCurrency(result.pay.weekendPremium)}</span>
+                        </div>
+                    </div>
+
+                    <div class="pay-row gross-pay">
+                        <span><strong>GROSS PAY:</strong></span>
+                        <span><strong>${scheduler.formatCurrency(result.pay.gross)}</strong></span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showAlert(message, type = 'info') {
+            // Remove existing alerts
+            const existingAlerts = document.querySelectorAll('.temp-alert');
+            existingAlerts.forEach(alert => alert.remove());
+
+            // Create new alert
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert ${type} temp-alert`;
+            alertDiv.textContent = message;
+            alertDiv.style.position = 'fixed';
+            alertDiv.style.top = '20px';
+            alertDiv.style.right = '20px';
+            alertDiv.style.zIndex = '2000';
+            alertDiv.style.maxWidth = '300px';
+
+            document.body.appendChild(alertDiv);
+
+            // Remove alert after 3 seconds
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 3000);
+        }
+
+        // Set default start date to today
+        document.getElementById('startDate').value = new Date().toISOString().split('T')[0];
+
+        // Auto-update hours when shift type changes
+        document.getElementById('shiftType').addEventListener('change', function() {
+            const type = this.value;
+            const hoursInput = document.getElementById('shiftHours');
+            if (scheduler && scheduler.settings && scheduler.settings.shiftHours[type] !== undefined) {
+                hoursInput.value = scheduler.settings.shiftHours[type];
+            }
+        });
+    </script>
+</body>
+</html><div class="pay-row">
                             <span>Night Premium:</span>
                             <span>${scheduler.formatCurrency(result.pay.nightPremium)}</span>
                         </div>
