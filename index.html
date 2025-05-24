@@ -1008,6 +1008,18 @@
 
             addQuickShift(type) {
                 if (this.currentDay < 14) {
+                    // For "off" days, just clear the day and move to next
+                    if (type === 'off') {
+                        this.schedule[this.currentDay] = [];
+                        this.currentDay++;
+                        if (this.currentDay >= 14) {
+                            this.currentDay = 0; // Reset to beginning
+                        }
+                        this.initCalendar();
+                        showAlert('Day off set (day cleared)!', 'success');
+                        return;
+                    }
+
                     const hours = this.settings.shiftHours[type] || 0;
                     const startTime = this.settings.defaultStartTimes[type] || '07:00';
                     
@@ -1019,7 +1031,7 @@
                     };
 
                     // Check for overlaps if validation is enabled
-                    if (this.settings.validateOverlaps && type !== 'off') {
+                    if (this.settings.validateOverlaps) {
                         const overlap = this.checkShiftOverlaps(this.schedule[this.currentDay], shift);
                         if (overlap) {
                             showAlert(`Shift overlaps with existing ${overlap.overlappingShift.type} shift!`, 'error');
@@ -1068,7 +1080,7 @@
             }
 
             checkShiftOverlaps(dayShifts, newShift, excludeIndex = -1) {
-                if (!this.settings.validateOverlaps || newShift.type === 'off') return null;
+                if (!this.settings.validateOverlaps) return null;
                 
                 const newStart = this.timeToMinutes(newShift.startTime);
                 const newEnd = newStart + (newShift.hours * 60);
@@ -1077,7 +1089,6 @@
                     if (i === excludeIndex) continue;
                     
                     const shift = dayShifts[i];
-                    if (shift.type === 'off') continue;
                     
                     const shiftStart = this.timeToMinutes(shift.startTime || '00:00');
                     const shiftEnd = shiftStart + (shift.hours * 60);
@@ -1126,9 +1137,7 @@
                 let currentPeriodHours = 0;
                 this.schedule.forEach((dayShifts) => {
                     dayShifts.forEach((shift) => {
-                        if (shift.type !== 'off') {
-                            currentPeriodHours += shift.hours;
-                        }
+                        currentPeriodHours += shift.hours;
                     });
                 });
                 
@@ -1152,22 +1161,20 @@
                     let dailyOt2 = 0;
                     
                     dayShifts.forEach((shift) => {
-                        if (shift.type !== 'off') {
-                            const hours = shift.hours;
-                            dailyTotal += hours;
-                            
-                            // Check if weekend for premium calculation
-                            const dayOfWeek = (this.settings.startDay + dayIndex) % 7;
-                            if (dayOfWeek === 0 || dayOfWeek === 6) {
-                                weekendHours += hours;
-                            }
-                            
-                            // Track shift types for premiums
-                            if (shift.type === 'night') {
-                                nightHours += hours;
-                            } else if (shift.type === 'evening') {
-                                eveningHours += hours;
-                            }
+                        const hours = shift.hours;
+                        dailyTotal += hours;
+                        
+                        // Check if weekend for premium calculation
+                        const dayOfWeek = (this.settings.startDay + dayIndex) % 7;
+                        if (dayOfWeek === 0 || dayOfWeek === 6) {
+                            weekendHours += hours;
+                        }
+                        
+                        // Track shift types for premiums
+                        if (shift.type === 'night') {
+                            nightHours += hours;
+                        } else if (shift.type === 'evening') {
+                            eveningHours += hours;
                         }
                     });
                     
@@ -1336,6 +1343,15 @@
             const startTime = document.getElementById('startTime').value;
             const note = document.getElementById('shiftNote').value;
 
+            // Handle "off" days by clearing the day
+            if (type === 'off') {
+                scheduler.schedule[scheduler.editingDay] = [];
+                scheduler.initCalendar();
+                closeShiftModal();
+                showAlert('Day off set (day cleared)!', 'success');
+                return;
+            }
+
             if (isNaN(hours) || hours < 0 || hours > 24) {
                 showAlert('Hours must be between 0 and 24!', 'error');
                 return;
@@ -1349,7 +1365,7 @@
             };
 
             // Check for overlaps if validation is enabled
-            if (scheduler.settings.validateOverlaps && type !== 'off') {
+            if (scheduler.settings.validateOverlaps) {
                 const dayShifts = scheduler.schedule[scheduler.editingDay];
                 const overlap = scheduler.checkShiftOverlaps(dayShifts, shift, scheduler.editingShiftIndex);
                 
