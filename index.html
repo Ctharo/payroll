@@ -617,8 +617,12 @@
                 this.pattern = {
                     rotationStart: new Date().toISOString().split('T')[0],
                     weeks: [
-                        ['day','day','day','day','day','off','off'],
-                        ['off','evening','evening','evening','evening','off','off']
+                        ['day', 'day', 'day', 'day', 'evening', 'evening', 'off'],      // DDDDEE-
+                        ['off', 'evening', 'evening', 'off', 'day', 'day', 'day'],      // -EE-DDD
+                        ['day', 'evening', 'evening', 'off', 'day', 'day', 'evening'],  // DEE-DDE
+                        ['evening', 'off', 'off', 'evening', 'night', 'night', 'off'],  // E--ENN-
+                        ['off', 'day', 'day', 'day', 'off', 'night', 'night'],          // -DDD-NN
+                        ['night', 'off', 'off', 'night', 'night', 'night', 'off']       // N--NNN-
                     ]
                 };
                 this.settings = {
